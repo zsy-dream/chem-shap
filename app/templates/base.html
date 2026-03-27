@@ -1,0 +1,494 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SHAP化学院实验归因分析平台{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #2ec4b6;
+            --danger-color: #ef476f;
+            --warning-color: #f4a261;
+            --dark-color: #1f2a44;
+            --light-bg: #f7f9fc;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(29, 78, 216, 0.08), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(14, 116, 144, 0.06), transparent 35%),
+                linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            min-height: 100vh;
+            color: #0f172a;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.95) !important;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            color: var(--primary-color) !important;
+            font-size: 1.3rem;
+        }
+
+        .main-container {
+            margin-top: 88px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            border: none;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--primary-color), #3a86ff);
+            color: white;
+            border-radius: 18px 18px 0 0 !important;
+            padding: 1.1rem 1.4rem;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), #3a86ff);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 22px;
+            font-weight: 600;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--secondary-color), #22a699);
+            border: none;
+            border-radius: 25px;
+            padding: 10px 22px;
+            font-weight: 600;
+        }
+
+        .btn-warning {
+            border-radius: 25px;
+            font-weight: 600;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 18px;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-icon {
+            font-size: 2.8rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary-color), #3a86ff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-value {
+            font-size: 2.3rem;
+            font-weight: 700;
+            color: var(--dark-color);
+        }
+
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .progress {
+            height: 16px;
+            border-radius: 999px;
+            background: #e8edf5;
+        }
+
+        .glass-card .text-white,
+        .card-body .text-white {
+            color: #0f172a !important;
+        }
+
+        .glass-card .text-white-50,
+        .glass-card .text-white-75,
+        .glass-card .text-white-25,
+        .card-body .text-white-50,
+        .card-body .text-white-75,
+        .card-body .text-white-25 {
+            color: rgba(15, 23, 42, 0.7) !important;
+        }
+
+        /* 导航栏彩色标签 */
+        .nav-link {
+            position: relative;
+            font-weight: 500;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            width: 0;
+            height: 3px;
+            border-radius: 2px;
+            transform: translateX(-50%);
+            transition: width 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            transform: translateY(-2px);
+        }
+        
+        /* 当前页面指示器 - 底部小方块 */
+        .nav-link.active::after {
+            width: 20px;
+        }
+        
+        /* 各导航项颜色 */
+        .nav-home { color: #4361ee !important; }
+        .nav-home:hover, .nav-home.active { background: rgba(67, 97, 238, 0.1); }
+        .nav-home.active::after { background: #4361ee; }
+        
+        .nav-samples { color: #2ec4b6 !important; }
+        .nav-samples:hover, .nav-samples.active { background: rgba(46, 196, 182, 0.1); }
+        .nav-samples.active::after { background: #2ec4b6; }
+        
+        .nav-analysis { color: #8338ec !important; }
+        .nav-analysis:hover, .nav-analysis.active { background: rgba(131, 56, 236, 0.1); }
+        .nav-analysis.active::after { background: #8338ec; }
+        
+        .nav-sensitivity { color: #ef476f !important; }
+        .nav-sensitivity:hover, .nav-sensitivity.active { background: rgba(239, 71, 111, 0.1); }
+        .nav-sensitivity.active::after { background: #ef476f; }
+        
+        .nav-batch { color: #f4a261 !important; }
+        .nav-batch:hover, .nav-batch.active { background: rgba(244, 162, 97, 0.1); }
+        .nav-batch.active::after { background: #f4a261; }
+        
+        .nav-case { color: #118ab2 !important; }
+        .nav-case:hover, .nav-case.active { background: rgba(17, 138, 178, 0.1); }
+        .nav-case.active::after { background: #118ab2; }
+        
+        .nav-models { color: #06d6a0 !important; }
+        .nav-models:hover, .nav-models.active { background: rgba(6, 214, 160, 0.1); }
+        .nav-models.active::after { background: #06d6a0; }
+        
+        .nav-reports { color: #ffd166 !important; }
+        .nav-reports:hover, .nav-reports.active { background: rgba(255, 209, 102, 0.1); }
+        .nav-reports.active::after { background: #ffd166; }
+
+        .modal-backdrop.show {
+            opacity: 0.22;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem 0;
+            margin-top: 4rem;
+            box-shadow: 0 -2px 20px rgba(0, 0, 0, 0.08);
+            backdrop-filter: blur(10px);
+        }
+
+        .loading-spinner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+        }
+
+        .spinner-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .spinner-border {
+            width: 4rem;
+            height: 4rem;
+            border-width: 0.4rem;
+        }
+
+        .hero-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.7);
+            color: #1e3a5f;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 0 0.5rem 0.8rem 0;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(29, 78, 216, 0.2);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .hero-chip:hover {
+            background: rgba(255, 255, 255, 0.95);
+            transform: translateY(-3px) scale(1.03);
+            border-color: var(--primary-color);
+            box-shadow: 0 8px 25px rgba(29, 78, 216, 0.15);
+        }
+
+        .hero-chip i {
+            color: var(--secondary-color);
+            font-size: 1rem;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(29, 78, 216, 0.12);
+            border-radius: 20px;
+            padding: 1.5rem;
+            color: #0f172a;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(29, 78, 216, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(29, 78, 216, 0.25);
+            box-shadow: 0 12px 40px rgba(29, 78, 216, 0.15);
+        }
+
+        .metric-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.45rem 0.85rem;
+            border-radius: 999px;
+            background: rgba(67, 97, 238, 0.08);
+            color: var(--dark-color);
+            font-weight: 600;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Presentation Mode Support */
+        body.presentation-autoplay .navbar,
+        body.presentation-autoplay .footer {
+            display: none !important;
+        }
+
+        body.presentation-autoplay .main-container {
+            width: 100%;
+            max-width: 100%;
+            margin-top: 0;
+            margin-bottom: 0;
+            padding: 22px 28px 32px;
+        }
+
+        body.presentation-autoplay {
+            background:
+                radial-gradient(circle at top left, rgba(67, 97, 238, 0.22), transparent 34%),
+                radial-gradient(circle at top right, rgba(46, 196, 182, 0.18), transparent 25%),
+                linear-gradient(160deg, #081122 0%, #12233d 50%, #16345c 100%);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        .hover-shadow:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+
+        /* Chart responsive containers */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 200px;
+        }
+
+        .chart-container canvas {
+            max-height: 100% !important;
+            width: 100% !important;
+        }
+
+        .card-body canvas {
+            max-height: 300px;
+        }
+
+        /* Export button styles */
+        .export-btn-group {
+            display: inline-flex;
+            gap: 0.5rem;
+        }
+
+        .export-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .export-btn-primary {
+            background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+            color: white;
+            border: none;
+        }
+
+        .export-btn-primary:hover {
+            background: linear-gradient(135deg, #1e40af, #2563eb);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(29, 78, 216, 0.25);
+        }
+
+        .export-btn-secondary {
+            background: white;
+            color: #1d4ed8;
+            border: 1px solid rgba(29, 78, 216, 0.3);
+        }
+
+        .export-btn-secondary:hover {
+            background: rgba(29, 78, 216, 0.05);
+            border-color: #1d4ed8;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body class="{% block body_class %}{% if autoplay_mode %}presentation-autoplay{% endif %}{% endblock %}">
+    <nav class="navbar navbar-expand-lg navbar-light fixed-top">
+        <div class="container-fluid px-lg-5">
+            <a class="navbar-brand" href="/"><i class="fas fa-flask-vial"></i> 智析实验 · SHAP归因</a>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto gap-lg-2">
+                    <li class="nav-item"><a class="nav-link nav-home px-3 {% if request.path == '/' %}active{% endif %}" href="/"><i class="fas fa-house"></i> 首页总览</a></li>
+                    <li class="nav-item"><a class="nav-link nav-samples px-3 {% if request.path == '/samples' %}active{% endif %}" href="/samples"><i class="fas fa-vials"></i> 样本档案</a></li>
+                    <li class="nav-item"><a class="nav-link nav-analysis px-3 {% if request.path == '/analysis' %}active{% endif %}" href="/analysis"><i class="fas fa-wand-magic-sparkles"></i> 归因分析</a></li>
+                    <li class="nav-item"><a class="nav-link nav-sensitivity px-3 {% if request.path == '/sensitivity' %}active{% endif %}" href="/sensitivity"><i class="fas fa-fire-flame-curved"></i> 敏感性分析</a></li>
+                    <li class="nav-item"><a class="nav-link nav-batch px-3 {% if request.path == '/batch-compare' %}active{% endif %}" href="/batch-compare"><i class="fas fa-people-arrows"></i> 批量对比</a></li>
+                    <li class="nav-item"><a class="nav-link nav-case px-3 {% if request.path == '/case-study' %}active{% endif %}" href="/case-study"><i class="fas fa-microscope"></i> 案例对比</a></li>
+                    <li class="nav-item"><a class="nav-link nav-models px-3 {% if request.path == '/models' %}active{% endif %}" href="/models"><i class="fas fa-brain"></i> 模型管理</a></li>
+                    <li class="nav-item"><a class="nav-link nav-reports px-3 {% if request.path == '/reports' %}active{% endif %}" href="/reports"><i class="fas fa-file-invoice"></i> 报告中心</a></li>
+                    <li class="nav-item ms-lg-3"><a class="nav-link text-danger px-3" href="/logout"><i
+                                class="fas fa-power-off"></i></a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-container">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <div class="text-primary fw-bold">系统正在处理数据，请稍候...</div>
+        </div>
+    </div>
+
+    <div class="{% block container_class %}container main-container{% endblock %}">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm"
+            role="alert">
+            <i class="fas {{ 'fa-check-circle' if category == 'success' else 'fa-circle-exclamation' }} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="fade-in">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="mb-2 text-muted fw-semibold">
+                <i class="fas fa-flask me-2"></i> 智析实验 - 化学实验多维条件优化归因系统
+            </p>
+            <p class="mb-0 x-small text-muted" style="font-size: 0.8rem;">
+                &copy; 2026 Powered by SHAP XAI Engine | 面向化学院科技竞赛、竞赛答辩及教学辅助设计
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showLoading() { document.getElementById('loadingSpinner').style.display = 'block'; }
+        function hideLoading() { document.getElementById('loadingSpinner').style.display = 'none'; }
+
+        // Auto-animate cards on load
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.card').forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(15px)';
+                card.style.transition = 'all 0.4s ease-out';
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100 + (index * 60));
+            });
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+
+</html>

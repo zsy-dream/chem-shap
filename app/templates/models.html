@@ -1,0 +1,327 @@
+﻿{% extends "base.html" %}
+
+{% block title %}模型管理 - SHAP化学实验归因分析平台{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="fas fa-brain"></i> 模型管理</h2>
+        <p class="text-muted">训练并管理用于预测实验成功率的机器学习模型。</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#trainModelModal"><i
+                class="fas fa-plus"></i> 训练新模型</button>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="glass-card text-center p-4">
+            <h1 class="display-6 fw-bold mb-1">{{ models|length }}</h1>
+            <div class="small text-muted">模型库承载总量</div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="glass-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-muted">模型效能概览 (按准确率)</span>
+                <span class="badge bg-success">实时评估</span>
+            </div>
+            <div style="height: 120px; position: relative;">
+                <canvas id="modelPerformanceChart"></canvas>
+                <div id="noModelsMsg" class="text-center text-muted small" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                    <i class="fas fa-chart-line me-1"></i>暂无模型数据
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header"><i class="fas fa-list"></i> 模型列表</div>
+    <div class="card-body">
+        {% if models %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>模型名称</th>
+                        <th>算法类型</th>
+                        <th>状态</th>
+                        <th>准确率/得分</th>
+                        <th>AUC</th>
+                        <th>创建日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for model in models %}
+                    <tr>
+                        <td>{{ model.id }}</td>
+                        <td><strong>{{ model.name }}</strong></td>
+                        <td><span class="badge bg-primary">{{ model.model_type }}</span></td>
+                        <td>
+                            {% if model.is_active %}
+                            <span class="badge bg-success">已激活</span>
+                            {% else %}
+                            <span class="badge bg-secondary">未激活</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if model.metrics %}
+                            {{ "%.2f"|format(model.metrics.get('accuracy', model.metrics.get('auc', 0)) * 100) }}%
+                            {% else %}-{% endif %}
+                        </td>
+                        <td>{% if model.metrics and model.metrics.get('auc') %}{{
+                            "%.3f"|format(model.metrics.get('auc')) }}{% else %}-{% endif %}</td>
+                        <td>{{ model.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" data-model-id="{{ model.id }}" onclick="viewModelDetails(this.dataset.modelId)"><i
+                                    class="fas fa-eye"></i></button>
+                            {% if not model.is_active %}
+                            <form method="POST" action="/activate_model/{{ model.id }}" style="display:inline;">
+                                <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check"></i>
+                                    激活</button>
+                            </form>
+                            {% else %}
+                            <span class="badge bg-success">运行中</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-brain fa-4x text-muted mb-3"></i>
+            <p class="text-muted">暂无训练模型</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#trainModelModal"><i
+                    class="fas fa-plus"></i> 发起首次模型训练</button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="trainModelModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-brain"></i> 训练新预测模型</h5>
+                <button type="button" class="btn-close" onclick="document.getElementById('trainModelModal').classList.remove('show'); document.querySelector('.modal-backdrop')?.remove(); document.body.classList.remove('modal-open'); document.body.style.overflow='';"></button>
+            </div>
+            <div class="modal-body">
+                <form id="trainModelForm" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">模型标识名</label>
+                            <input type="text" class="form-control" name="name" required placeholder="如：催化反应优化模型_v1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">算法选择</label>
+                            <select class="form-select" name="model_type" required>
+                                <option value="xgboost">XGBoost (推荐)</option>
+                                <option value="random_forest">Random Forest</option>
+                                <option value="lightgbm">LightGBM</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">上传训练集 (CSV)</label>
+                        <input type="file" class="form-control" name="data_file" accept=".csv" required>
+                        <small class="text-muted">CSV 需包含各个实验因子列及一个标签列（默认名为 `target`）。</small>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">目标列名</label>
+                            <input type="text" class="form-control" name="target_column" value="target" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">测试集比例</label>
+                            <input type="number" class="form-control" name="test_ratio" value="0.2" min="0.1" max="0.5"
+                                step="0.05">
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> <strong>提示：</strong>训练完成后，系统将自动计算准确率等指标，并持久化模型文件以便后续分析调用。
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="document.getElementById('trainModelModal').classList.remove('show'); document.querySelector('.modal-backdrop')?.remove(); document.body.classList.remove('modal-open'); document.body.style.overflow='';">取消</button>
+                <button type="button" class="btn btn-success" onclick="trainModel()"><i class="fas fa-play"></i>
+                    开始训练</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modelDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> 模型详细指标</h5>
+                <button type="button" class="btn-close" onclick="document.getElementById('modelDetailsModal').classList.remove('show'); document.querySelector('.modal-backdrop')?.remove(); document.body.classList.remove('modal-open'); document.body.style.overflow='';"></button>
+            </div>
+            <div class="modal-body" id="modelDetailsContent">
+                <!-- 动态加载内容 -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="modelsChartData">{{ models_json|safe }}</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modelsData = JSON.parse(document.getElementById('modelsChartData').textContent || '{"labels":[],"values":[]}');
+        const chartEl = document.getElementById('modelPerformanceChart');
+        const noDataMsg = document.getElementById('noModelsMsg');
+        
+        if (!modelsData || !modelsData.labels || modelsData.labels.length === 0) {
+            // 没有模型数据时显示提示
+            if (noDataMsg) noDataMsg.style.display = 'block';
+            return;
+        }
+        
+        if (chartEl && modelsData && Array.isArray(modelsData.labels)) {
+            // 根据模型数量选择图表类型：单个用 bar，多个用 line
+            const isSingleModel = modelsData.labels.length === 1;
+            
+            new Chart(chartEl, {
+                type: isSingleModel ? 'bar' : 'line',
+                data: {
+                    labels: modelsData.labels,
+                    datasets: [{
+                        label: '模型表现 (%)',
+                        data: modelsData.values || [],
+                        borderColor: '#2ec4b6',
+                        backgroundColor: isSingleModel ? '#4361ee' : 'rgba(46, 196, 182, 0.12)',
+                        tension: 0.35,
+                        fill: !isSingleModel,
+                        pointRadius: isSingleModel ? 0 : 4,
+                        borderWidth: isSingleModel ? 0 : 2,
+                        barThickness: isSingleModel ? 40 : undefined,
+                        borderRadius: isSingleModel ? 4 : undefined
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(items) {
+                                    return items[0].label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            min: 0, 
+                            max: 100, 
+                            ticks: { color: 'rgba(15,23,42,0.7)' }, 
+                            grid: { color: 'rgba(15,23,42,0.08)' } 
+                        },
+                        x: { 
+                            ticks: { 
+                                color: 'rgba(15,23,42,0.7)',
+                                maxRotation: 45,
+                                minRotation: 0
+                            }, 
+                            grid: { display: false } 
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    function trainModel() {
+        const form = document.getElementById('trainModelForm');
+        const formData = new FormData(form);
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+
+        showLoading();
+        fetch('/train_model', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                hideLoading();
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return null;
+                }
+                return response.text();
+            })
+            .catch(error => {
+                hideLoading();
+                alert('训练发起失败：' + error);
+            });
+    }
+
+    function viewModelDetails(modelId) {
+        showLoading();
+        fetch(`/api/model/${modelId}`)
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                let html = `
+            <table class="table table-borderless">
+                <tr><th>数据库ID：</th><td>${data.id}</td></tr>
+                <tr><th>模型名称：</th><td>${data.name}</td></tr>
+                <tr><th>算法类型：</th><td><span class="badge bg-primary">${data.model_type}</span></td></tr>
+                <tr><th>运行状态：</th><td><span class="badge ${data.is_active ? 'bg-success' : 'bg-secondary'}">${data.is_active ? '已激活' : '未激活'}</span></td></tr>
+                <tr><th>预测表现：</th><td>${(data.accuracy * 100).toFixed(2)}%</td></tr>
+                <tr><th>创建日期：</th><td>${data.created_at}</td></tr>
+            </table>
+        `;
+                if (data.metrics) {
+                    html += `
+                <h6 class="mt-3">模型评估集指标</h6>
+                <table class="table table-sm">
+                    <tr><th>AUC 值：</th><td>${data.metrics.auc ? data.metrics.auc.toFixed(3) : '-'}</td></tr>
+                    <tr><th>精确率：</th><td>${data.metrics.precision ? data.metrics.precision.toFixed(3) : '-'}</td></tr>
+                    <tr><th>召回率：</th><td>${data.metrics.recall ? data.metrics.recall.toFixed(3) : '-'}</td></tr>
+                    <tr><th>F1 分数：</th><td>${data.metrics.f1_score ? data.metrics.f1_score.toFixed(3) : '-'}</td></tr>
+                </table>
+            `;
+                }
+                document.getElementById('modelDetailsContent').innerHTML = html;
+                new bootstrap.Modal(document.getElementById('modelDetailsModal')).show();
+            })
+            .catch(error => {
+                hideLoading();
+                alert('获取模型详情失败：' + error);
+            });
+    }
+    // 确保弹窗能关闭：显式绑定关闭事件
+    document.querySelectorAll('.modal').forEach(modalEl => {
+        // 点击遮罩层关闭
+        modalEl.addEventListener('click', (e) => {
+            if (e.target === modalEl) {
+                bootstrap.Modal.getInstance(modalEl)?.hide();
+            }
+        });
+        
+        // 点 X 按钮关闭
+        modalEl.querySelector('.btn-close')?.addEventListener('click', () => {
+            bootstrap.Modal.getInstance(modalEl)?.hide();
+        });
+    });
+    
+    // ESC 键关闭任何打开的弹窗
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal.show').forEach(modalEl => {
+                bootstrap.Modal.getInstance(modalEl)?.hide();
+            });
+        }
+    });
+</script>
+{% endblock %}

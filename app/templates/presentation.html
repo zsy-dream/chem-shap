@@ -1,0 +1,868 @@
+﻿{% extends "base.html" %}
+
+{% block title %}大屏展示 - 智析实验{% endblock %}
+
+{% block extra_css %}
+<style>
+    .presentation-page .panel-dark {
+        background: linear-gradient(135deg, rgba(14, 23, 46, 0.88), rgba(31, 42, 68, 0.92));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: white;
+        border-radius: 24px;
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.18);
+    }
+
+    .presentation-page .panel-dark .muted {
+        color: rgba(255, 255, 255, 0.72);
+    }
+
+    .presentation-page .hero-title {
+        font-size: 2.8rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .presentation-page .score-ring {
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.08), rgba(67, 97, 238, 0.25));
+        border: 10px solid rgba(46, 196, 182, 0.4);
+        box-shadow: 0 0 28px rgba(46, 196, 182, 0.16);
+    }
+
+    .presentation-page .score-ring strong {
+        font-size: 2.6rem;
+    }
+
+    .presentation-page .story-step {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 18px;
+        padding: 1rem;
+        height: 100%;
+    }
+
+    .presentation-page .mini-card {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 1rem;
+        height: 100%;
+    }
+
+    .presentation-page .sample-chip {
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        background: rgba(255, 255, 255, 0.08);
+        color: white;
+        border-radius: 999px;
+        padding: 0.45rem 0.8rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+
+    .presentation-page .sample-chip.active {
+        background: rgba(46, 196, 182, 0.25);
+        border-color: rgba(46, 196, 182, 0.55);
+        box-shadow: 0 0 0 1px rgba(46, 196, 182, 0.15) inset;
+    }
+
+    .presentation-page .feature-list li {
+        margin-bottom: 0.55rem;
+    }
+
+    .presentation-page [data-presentation-section] {
+        scroll-margin-top: 20px;
+    }
+
+    .stage-overlay {
+        position: fixed;
+        top: 16px;
+        right: 20px;
+        z-index: 1100;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        width: min(340px, calc(100vw - 32px));
+    }
+
+    .stage-overlay-card {
+        background: rgba(8, 17, 34, 0.84);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 20px;
+        padding: 14px 16px;
+        backdrop-filter: blur(14px);
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+    }
+
+    .stage-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        background: rgba(255, 255, 255, 0.28);
+        transition: transform 0.35s ease, background 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .stage-dot.active {
+        background: #2ec4b6;
+        box-shadow: 0 0 10px rgba(46, 196, 182, 0.8);
+        transform: scale(1.18);
+    }
+
+    .stage-progress-shell {
+        margin-top: 10px;
+        height: 10px;
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .stage-progress-bar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #2ec4b6, #4cc9f0, #ffd166);
+        border-radius: 999px;
+        box-shadow: 0 0 16px rgba(76, 201, 240, 0.35);
+        transition: width 0.12s linear;
+    }
+
+    .stage-global-progress {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 4px;
+        z-index: 1250;
+        background: rgba(255, 255, 255, 0.08);
+        display: none;
+    }
+
+    .stage-global-progress-bar {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(90deg, #2ec4b6, #4cc9f0, #ffd166);
+        box-shadow: 0 0 18px rgba(76, 201, 240, 0.45);
+        transition: width 0.12s linear;
+    }
+
+    .fullscreen-guide {
+        position: fixed;
+        inset: 0;
+        z-index: 1300;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: radial-gradient(circle at top, rgba(67, 97, 238, 0.2), transparent 35%), rgba(5, 10, 22, 0.82);
+        backdrop-filter: blur(10px);
+    }
+
+    .fullscreen-guide.show {
+        display: flex;
+    }
+
+    .fullscreen-guide-card {
+        width: min(760px, 100%);
+        padding: 2rem;
+        border-radius: 28px;
+        color: white;
+        background: linear-gradient(145deg, rgba(13, 25, 48, 0.94), rgba(22, 44, 76, 0.92));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
+    }
+
+    .guide-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.1);
+        margin-bottom: 1rem;
+    }
+
+    body.presentation-autoplay .stage-global-progress {
+        display: block;
+    }
+
+    body.presentation-autoplay .presentation-page {
+        position: relative;
+        scroll-snap-type: y mandatory;
+    }
+
+    body.presentation-autoplay .presentation-page .panel-dark,
+    body.presentation-autoplay .presentation-page .card,
+    body.presentation-autoplay .presentation-page .stat-card {
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+    }
+
+    body.presentation-autoplay .presentation-page [data-presentation-section] {
+        min-height: calc(100vh - 36px);
+        align-items: center;
+        scroll-snap-align: start;
+        opacity: 0.18;
+        transform: translateY(70px) scale(0.96);
+        filter: blur(8px);
+        transition: opacity 0.8s ease, transform 0.9s cubic-bezier(.2, .7, .2, 1), filter 0.8s ease;
+        will-change: transform, opacity, filter;
+    }
+
+    body.presentation-autoplay .presentation-page [data-presentation-section].stage-active {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
+
+    body.presentation-autoplay .presentation-page [data-presentation-section].stage-before {
+        opacity: 0.08;
+        transform: translateY(-40px) scale(0.985);
+        filter: blur(5px);
+    }
+
+    body.presentation-autoplay .presentation-page [data-presentation-section].stage-after {
+        opacity: 0.1;
+        transform: translateY(40px) scale(0.985);
+        filter: blur(5px);
+    }
+
+    body.presentation-autoplay .presentation-page [data-presentation-section].stage-transitioning {
+        pointer-events: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="presentation-page">
+    {% if autoplay_mode %}
+    <div class="stage-global-progress">
+        <div id="stageGlobalProgressBar" class="stage-global-progress-bar"></div>
+    </div>
+    <div id="fullscreenGuide" class="fullscreen-guide show">
+        <div class="fullscreen-guide-card">
+            <span class="guide-badge"><i class="fas fa-tower-broadcast"></i> 答辩驾驶舱模式</span>
+            <h2 class="fw-bold mb-3">准备进入自动播放展示</h2>
+            <p class="text-white-50 mb-4">建议开启全屏后开始自动演示。系统将自动隐藏导航、按区块轮播页面，并同步切换代表样本与倒计时进度条。</p>
+            <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                    <div class="mini-card">
+                        <div class="small text-white-50">模式特性</div>
+                        <div class="fw-bold mt-2">PPT式整页切换</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mini-card">
+                        <div class="small text-white-50">展示节奏</div>
+                        <div class="fw-bold mt-2">每屏自动倒计时</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mini-card">
+                        <div class="small text-white-50">答辩体验</div>
+                        <div class="fw-bold mt-2">样本与区块联动轮播</div>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-3">
+                <button class="btn btn-warning text-dark" type="button" onclick="startGuidedMode(true)"><i
+                        class="fas fa-expand"></i> 全屏开始</button>
+                <button class="btn btn-outline-light" type="button" onclick="startGuidedMode(false)"><i
+                        class="fas fa-play"></i> 直接开始</button>
+                <a href="{{ url_for('web.presentation') }}" class="btn btn-outline-light"><i
+                        class="fas fa-arrow-left"></i> 返回普通大屏</a>
+            </div>
+        </div>
+    </div>
+    <div class="stage-overlay">
+        <div class="stage-overlay-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong><i class="fas fa-tower-broadcast"></i> 自动播放模式</strong>
+                <a href="{{ url_for('web.presentation') }}" class="btn btn-sm btn-outline-light"><i
+                        class="fas fa-xmark"></i> 退出</a>
+            </div>
+            <div class="small text-white-50 mb-3">系统会自动切换展示区块，并保持代表样本联动轮播。</div>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <button id="stageAutoplayToggle" class="btn btn-sm btn-warning text-dark" type="button"><i
+                        class="fas fa-pause"></i> 暂停</button>
+                <button class="btn btn-sm btn-outline-light" type="button" onclick="nextSection(true)"><i
+                        class="fas fa-forward"></i> 下一屏</button>
+                <button class="btn btn-sm btn-outline-light" type="button" onclick="toggleFullscreen()"><i
+                        class="fas fa-expand"></i> 全屏</button>
+            </div>
+            <div class="d-flex justify-content-between small text-white-50 mb-1">
+                <span id="stageLabel">项目总览</span>
+                <span id="stageCountdownLabel">08s</span>
+            </div>
+            <div class="stage-progress-shell">
+                <div id="stageProgressBar" class="stage-progress-bar"></div>
+            </div>
+        </div>
+        <div class="stage-overlay-card">
+            <div class="small text-white-50 mb-2">当前讲解区块</div>
+            <div id="stageName" class="fw-bold mb-2">项目总览</div>
+            <div id="stageDots"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <section class="row mb-4" data-presentation-section data-stage-title="项目总览">
+        <div class="col-lg-8">
+            <div class="panel-dark p-4 h-100">
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <span class="hero-chip"><i class="fas fa-trophy"></i> 科技竞赛答辩模式</span>
+                    <span class="hero-chip"><i class="fas fa-flask"></i> 化学实验优化</span>
+                    <span class="hero-chip"><i class="fas fa-chart-line"></i> SHAP 可解释分析</span>
+                </div>
+                <div class="hero-title mb-3">基于 SHAP 的化学实验归因分析与条件优化展示</div>
+                <p class="muted mb-4">本系统专门针对化学实验调参设计，通过 SHAP 算法量化各实验因子（温度、pH、时间等）对成功率的贡献，辅助科研人员快速定位最优实验条件。</p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="/analysis" class="btn btn-success"><i class="fas fa-play"></i> 现场发起分析</a>
+                    <a href="/reports" class="btn btn-primary"><i class="fas fa-file-lines"></i> 查看全部报告</a>
+                    <button class="btn btn-warning text-dark" type="button" onclick="toggleFullscreen()"><i
+                            class="fas fa-expand"></i> 全屏展示</button>
+                    <a href="{{ url_for('web.presentation', mode='autoplay') }}" class="btn btn-outline-light"><i
+                            class="fas fa-tower-broadcast"></i> 自动播放模式</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 mt-4 mt-lg-0">
+            <div class="panel-dark p-4 h-100 text-center">
+                {% if showcase.featured_report %}
+                {% set featured_level = get_result_level(showcase.featured_report.success_probability or 0) %}
+                <div class="score-ring mb-3">
+                    <div class="muted small">代表样本成功率</div>
+                    <strong id="heroProbability">{{ '%.0f'|format((showcase.featured_report.success_probability or 0) *
+                        100) }}%</strong>
+                    <span id="heroLevelBadge"
+                        class="badge bg-{{ featured_level.badge }} {{ 'text-dark' if featured_level.badge == 'warning' else '' }} mt-2">{{
+                        featured_level.label }}</span>
+                </div>
+                <div id="heroSampleName" class="muted">样本编号：{{ showcase.featured_report.sample.sample_id if
+                    showcase.featured_report.sample else '—' }}</div>
+                <div id="heroSampleMeta" class="small muted mt-2">系统推荐重点展示样本</div>
+                {% else %}
+                <div class="score-ring mb-3"><strong>0%</strong>
+                    <div class="muted small">暂无分析数据</div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-4 mb-4" data-presentation-section data-stage-title="核心指标">
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-vials"></i></div>
+                <div class="stat-value count-up" data-target="{{ stats.samples }}">0</div>
+                <div class="stat-label">实验样本数</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-brain"></i></div>
+                <div class="stat-value count-up" data-target="{{ stats.models }}">0</div>
+                <div class="stat-label">模型数量</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+                <div class="stat-value count-up" data-target="{{ stats.analyses }}">0</div>
+                <div class="stat-label">累计分析次数</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-bolt"></i></div>
+                <div class="stat-value count-up" data-target="{{ stats.active_models }}">0</div>
+                <div class="stat-label">激活模型</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-4 mb-4" data-presentation-section data-stage-title="趋势与分布">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header"><i class="fas fa-signal"></i> 近期实验成功率波动走势</div>
+                <div class="card-body"><canvas id="probabilityTimeline" height="130"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card h-100">
+                <div class="card-header"><i class="fas fa-chart-pie"></i> 样本评估等级饼图</div>
+                <div class="card-body"><canvas id="resultDistribution" height="220"></canvas></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-4 mb-4" data-presentation-section data-stage-title="对比与闭环">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-scale-balanced"></i> 对照组 vs 优化组 KPI</span>
+                    <span class="badge bg-light text-dark">自动汇总</span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="mini-card">
+                                <div class="muted small">平均成功率(%)</div>
+                                <canvas id="presentGroupAvgSuccess" height="115"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mini-card">
+                                <div class="muted small">优秀率(%)</div>
+                                <canvas id="presentGroupExcellentRate" height="115"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="mini-card">
+                                <div class="muted small mb-2">Top3 影响因子（组内聚合）</div>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="fw-bold mb-2">对照组</div>
+                                        <ol id="presentControlTopFeatures" class="small mb-0 ps-3"></ol>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="fw-bold mb-2">优化组</div>
+                                        <ol id="presentOptTopFeatures" class="small mb-0 ps-3"></ol>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="mini-card" style="border-left: 4px solid #2ec4b6;">
+                                <div class="muted small mb-2">统计显著性（Bootstrap 95% CI + 置换检验 p-value）</div>
+                                <div class="row g-3">
+                                    <div class="col-6">
+                                        <div class="small fw-bold">平均成功率提升</div>
+                                        <div class="d-flex align-items-baseline gap-2">
+                                            <span class="fs-4 fw-bold text-success" id="presentSigAvgDiff">--%</span>
+                                            <span class="small text-muted">95%CI [<span id="presentSigAvgCiLow">--</span>, <span id="presentSigAvgCiHigh">--</span>]</span>
+                                        </div>
+                                        <div class="muted small">n(对照)=<span id="presentSigAvgNControl">--</span> | n(优化)=<span id="presentSigAvgNOpt">--</span> | p=<span id="presentSigAvgP">--</span></div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="small fw-bold">优秀率提升</div>
+                                        <div class="d-flex align-items-baseline gap-2">
+                                            <span class="fs-4 fw-bold text-success" id="presentSigExcDiff">--%</span>
+                                            <span class="small text-muted">95%CI [<span id="presentSigExcCiLow">--</span>, <span id="presentSigExcCiHigh">--</span>]</span>
+                                        </div>
+                                        <div class="muted small">n(对照)=<span id="presentSigExcNControl">--</span> | n(优化)=<span id="presentSigExcNOpt">--</span> | p=<span id="presentSigExcP">--</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-arrow-trend-up"></i> 实验轮次提升曲线</span>
+                    <span class="badge bg-light text-dark" id="presentImprovementSampleId">样本：-</span>
+                </div>
+                <div class="card-body">
+                    <canvas id="presentImprovementStory" height="140"></canvas>
+                    <div class="mt-3">
+                        <div class="muted small mb-2"><i class="fas fa-border-all"></i> 相关性热力图（缩略版）</div>
+                        <div id="presentCorrelationHeatmap" class="table-responsive"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-4 mb-4" data-presentation-section data-stage-title="热点因子与模型表现">
+        <div class="col-lg-5">
+            <div class="card h-100">
+                <div class="card-header"><i class="fas fa-fire"></i> 高频关键因子</div>
+                <div class="card-body"><canvas id="hotspotChart" height="210"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card h-100">
+                <div class="card-header"><i class="fas fa-microchip"></i> 模型效果对比</div>
+                <div class="card-body"><canvas id="modelScoreChart" height="210"></canvas></div>
+            </div>
+        </div>
+    </section>
+
+    <section class="row g-4 mb-4" data-presentation-section data-stage-title="代表样本讲解">
+        <div class="col-lg-6">
+            <div class="panel-dark p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0"><i class="fas fa-clapperboard"></i> 代表样本轮播台</h4>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="previousReport()"><i
+                                class="fas fa-chevron-left"></i></button>
+                        <button id="sampleAutoplayToggle" class="btn btn-sm btn-outline-light" type="button"
+                            onclick="toggleSampleAutoplay()"><i class="fas fa-pause"></i></button>
+                        <button class="btn btn-sm btn-outline-light" type="button" onclick="nextReport()"><i
+                                class="fas fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div id="sampleChipContainer" class="d-flex flex-wrap gap-2 mb-3">
+                    {% for item in showcase.rotating_reports %}
+                    <button type="button" class="sample-chip {{ 'active' if loop.first else '' }}"
+                        data-index="{{ loop.index0 }}" onclick="showReport(Number(this.dataset.index))">{{ item.sample_id
+                        }}</button>
+                    {% endfor %}
+                </div>
+                <div class="mini-card mb-3">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <div class="muted small">当前讲解样本</div>
+                            <div id="carouselSampleName" class="fs-4 fw-bold mt-1">{{
+                                showcase.rotating_reports[0].sample_id if showcase.rotating_reports else '暂无样本' }}</div>
+                            <div id="carouselSampleTime" class="muted small mt-2">{{
+                                showcase.rotating_reports[0].created_at if showcase.rotating_reports else '' }}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="muted small">优质匹配概率</div>
+                            <div id="carouselProbability" class="fs-2 fw-bold">{{
+                                showcase.rotating_reports[0].probability if showcase.rotating_reports else 0 }}%</div>
+                            <span id="carouselLevel"
+                                class="badge bg-{{ showcase.rotating_reports[0].level_badge if showcase.rotating_reports else 'secondary' }} {{ 'text-dark' if showcase.rotating_reports and showcase.rotating_reports[0].level_badge == 'warning' else '' }} mt-2">{{
+                                showcase.rotating_reports[0].level_label if showcase.rotating_reports else '暂无'
+                                }}</span>
+                        </div>
+                    </div>
+                    <div id="carouselSummary" class="mt-3 muted">{{ showcase.rotating_reports[0].summary if
+                        showcase.rotating_reports else '暂无样本分析摘要。' }}</div>
+                </div>
+                <div class="row g-3 mb-3">
+                    {% for item in showcase.spotlight_features %}
+                    <div class="col-6">
+                        <div class="mini-card">
+                            <div class="muted small">{{ item.label }}</div>
+                            <div class="fw-bold mt-1">{{ item.value }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mini-card">
+                    <div class="muted small mb-2">该样本关键因子</div>
+                    <ul id="carouselFeatures" class="feature-list mb-3 ps-3">
+                        {% if showcase.rotating_reports %}
+                        {% for feature in showcase.rotating_reports[0].top_features %}
+                        <li>{{ feature }}</li>
+                        {% endfor %}
+                        {% else %}
+                        <li>暂无因子数据</li>
+                        {% endif %}
+                    </ul>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% if showcase.rotating_reports %}
+                        <a id="carouselDetailLink" href="/reports/{{ showcase.rotating_reports[0].report_id }}"
+                            class="btn btn-primary btn-sm"><i class="fas fa-eye"></i> 报告详情</a>
+                        <a id="carouselPreviewLink"
+                            href="/api/report/{{ showcase.rotating_reports[0].report_id }}/generate" target="_blank"
+                            class="btn btn-info text-white btn-sm"><i class="fas fa-file-code"></i> HTML预览</a>
+                        <a id="carouselSnapshotLink"
+                            href="/reports/{{ showcase.rotating_reports[0].report_id }}/snapshot"
+                            class="btn btn-warning text-dark btn-sm"><i class="fas fa-camera"></i> 截图页</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="panel-dark p-4 h-100">
+                <h4 class="mb-3"><i class="fas fa-route"></i> 答辩讲解流程</h4>
+                <div class="row g-3">
+                    {% for step in showcase.story_steps %}
+                    <div class="col-md-6">
+                        <div class="story-step">
+                            <div class="fw-bold mb-2">{{ loop.index }}. {{ step.title }}</div>
+                            <div class="muted">{{ step.desc }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mini-card mt-3">
+                    <div class="muted small mb-2">推荐答辩节奏</div>
+                    <div class="fw-bold">先讲趋势图和分布图，再切到代表样本轮播台，最后打开 HTML 预览或截图页收尾。</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="dashboardData">{{ dashboard|tojson }}</script>
+<script type="application/json" id="showcaseData">{{ showcase|tojson }}</script>
+<script type="application/json" id="autoplayData">{{ autoplay_mode|tojson }}</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dashboard = JSON.parse(document.getElementById('dashboardData').textContent || '{}');
+        const showcase = JSON.parse(document.getElementById('showcaseData').textContent || '{}');
+        const autoplayMode = JSON.parse(document.getElementById('autoplayData').textContent || 'false');
+        const probabilityTimeline = showcase.probability_timeline || { labels: [], values: [] };
+        const hotspot = showcase.hotspot || { labels: [], values: [] };
+        const modelScores = showcase.model_scores || { labels: [], values: [] };
+        const rotatingReports = showcase.rotating_reports || [];
+    const STAGE_DURATION_MS = 8000;
+    const SAMPLE_DURATION_MS = 5000;
+    const stageSections = Array.from(document.querySelectorAll('[data-presentation-section]'));
+    const stageDots = document.getElementById('stageDots');
+    const stageName = document.getElementById('stageName');
+    const stageLabel = document.getElementById('stageLabel');
+    const stageCountdownLabel = document.getElementById('stageCountdownLabel');
+    const stageProgressBar = document.getElementById('stageProgressBar');
+    const stageGlobalProgressBar = document.getElementById('stageGlobalProgressBar');
+    const fullscreenGuide = document.getElementById('fullscreenGuide');
+    let currentReportIndex = 0;
+    let currentSectionIndex = 0;
+    let sampleAutoplayEnabled = rotatingReports.length > 1;
+    let stageAutoplayEnabled = false;
+    let presentationStarted = !autoplayMode;
+    let sampleAutoplayTimer = null;
+    let stageTimerStartedAt = 0;
+    let stagePausedElapsed = 0;
+    let stageProgressFrame = null;
+    document.querySelectorAll('.count-up').forEach((element) => {
+        const target = Number(element.dataset.target || '0');
+        const duration = 900;
+        const start = performance.now();
+        function updateCount(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            element.textContent = Math.round(target * progress);
+            if (progress < 1) requestAnimationFrame(updateCount); else element.textContent = target;
+        }
+        requestAnimationFrame(updateCount);
+    });
+    new Chart(document.getElementById('probabilityTimeline'), { type: 'line', data: { labels: probabilityTimeline.labels, datasets: [{ label: '实验成功率(%)', data: probabilityTimeline.values, borderColor: '#2ec4b6', backgroundColor: 'rgba(46, 196, 182, 0.12)', tension: 0.3, fill: true }] }, options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } } });
+    new Chart(document.getElementById('resultDistribution'), { type: 'doughnut', data: { labels: (dashboard.result_distribution || {}).labels || [], datasets: [{ data: (dashboard.result_distribution || {}).values || [], backgroundColor: ['#2ec4b6', '#4361ee', '#f4a261'] }] }, options: { plugins: { legend: { position: 'bottom' } } } });
+    new Chart(document.getElementById('hotspotChart'), { type: 'bar', data: { labels: hotspot.labels, datasets: [{ label: '出现热度', data: hotspot.values, backgroundColor: '#ef476f' }] }, options: { indexAxis: 'y', plugins: { legend: { display: false } } } });
+    new Chart(document.getElementById('modelScoreChart'), { type: 'bar', data: { labels: modelScores.labels, datasets: [{ label: '模型得分(%)', data: modelScores.values, backgroundColor: ['#4361ee', '#2ec4b6', '#f4a261', '#ef476f'] }] }, options: { plugins: { legend: { position: 'bottom' } } } });
+
+    const groupCompare = dashboard.group_compare || {};
+    const groups = groupCompare.groups || [];
+    new Chart(document.getElementById('presentGroupAvgSuccess'), { type: 'bar', data: { labels: groups, datasets: [{ data: groupCompare.avg_success_rate || [], backgroundColor: ['rgba(67, 97, 238, 0.75)', 'rgba(46, 196, 182, 0.75)'] }] }, options: { plugins: { legend: { display: false } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } } });
+    new Chart(document.getElementById('presentGroupExcellentRate'), { type: 'bar', data: { labels: groups, datasets: [{ data: groupCompare.excellent_rate || [], backgroundColor: ['rgba(239, 71, 111, 0.7)', 'rgba(255, 209, 102, 0.9)'] }] }, options: { plugins: { legend: { display: false } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } } });
+
+    const renderTopList = (hostId, items) => {
+        const host = document.getElementById(hostId);
+        if (!host) return;
+        host.innerHTML = '';
+        (items || []).slice(0, 3).forEach((item) => {
+            const li = document.createElement('li');
+            li.textContent = `${item.name}`;
+            host.appendChild(li);
+        });
+        if (!host.children.length) {
+            const li = document.createElement('li');
+            li.textContent = '暂无数据';
+            host.appendChild(li);
+        }
+    };
+    const topFeatures = groupCompare.top_features || {};
+    renderTopList('presentControlTopFeatures', topFeatures['对照组']);
+    renderTopList('presentOptTopFeatures', topFeatures['优化组']);
+
+    // 显著性指标渲染（大屏版）
+    const sig = groupCompare.significance || {};
+    const avg = sig.avg_success_rate || {};
+    const exc = sig.excellent_rate || {};
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = (val === undefined || val === null) ? '--' : val;
+    };
+    const sign = (v) => (Number(v) >= 0 ? '+' : '');
+    setText('presentSigAvgDiff', sign(avg.diff) + (avg.diff ?? '--') + '%');
+    setText('presentSigAvgCiLow', avg.ci_low ?? '--');
+    setText('presentSigAvgCiHigh', avg.ci_high ?? '--');
+    setText('presentSigAvgNControl', avg.n_control ?? '--');
+    setText('presentSigAvgNOpt', avg.n_opt ?? '--');
+    setText('presentSigAvgP', avg.p_value ?? '--');
+
+    setText('presentSigExcDiff', sign(exc.diff) + (exc.diff ?? '--') + '%');
+    setText('presentSigExcCiLow', exc.ci_low ?? '--');
+    setText('presentSigExcCiHigh', exc.ci_high ?? '--');
+    setText('presentSigExcNControl', exc.n_control ?? '--');
+    setText('presentSigExcNOpt', exc.n_opt ?? '--');
+    setText('presentSigExcP', exc.p_value ?? '--');
+
+    const improvement = dashboard.improvement_story || {};
+    const improvementBadge = document.getElementById('presentImprovementSampleId');
+    if (improvementBadge) improvementBadge.textContent = `样本：${improvement.sample_id || '-'}`;
+    new Chart(document.getElementById('presentImprovementStory'), { type: 'line', data: { labels: improvement.labels || [], datasets: [{ label: '成功率(%)', data: improvement.values || [], borderColor: '#2ec4b6', backgroundColor: 'rgba(46, 196, 182, 0.12)', tension: 0.35, fill: true }] }, options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } } });
+
+    const corr = dashboard.correlation || {};
+    const corrLabels = corr.labels || [];
+    const corrMatrix = corr.matrix || [];
+    const heatmapHost = document.getElementById('presentCorrelationHeatmap');
+    if (heatmapHost && corrLabels.length && corrMatrix.length) {
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+        const colorFor = (v) => {
+            const value = clamp(Number(v) || 0, -1, 1);
+            const intensity = Math.round(Math.abs(value) * 140);
+            if (value >= 0) return `rgb(${255}, ${255 - intensity}, ${255 - intensity})`;
+            return `rgb(${255 - intensity}, ${255 - intensity}, ${255})`;
+        };
+        let html = '<table class="table table-sm table-bordered align-middle text-center mb-0" style="min-width: 720px;">';
+        html += '<thead><tr><th style="width: 160px;">特征</th>';
+        for (const label of corrLabels) html += `<th class="small">${label}</th>`;
+        html += '</tr></thead><tbody>';
+        for (let i = 0; i < corrLabels.length; i++) {
+            html += `<tr><th class="text-start small">${corrLabels[i]}</th>`;
+            for (let j = 0; j < corrLabels.length; j++) {
+                const v = (corrMatrix[i] || [])[j] ?? 0;
+                html += `<td style="background:${colorFor(v)}; font-variant-numeric: tabular-nums;" class="small">${Number(v).toFixed(2)}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        heatmapHost.innerHTML = html;
+    } else if (heatmapHost) {
+        heatmapHost.innerHTML = '<div class="text-muted small">暂无足够数据生成热力图。</div>';
+    }
+    function updateStageIndicators() {
+        const title = stageSections[currentSectionIndex]?.dataset.stageTitle || `展示区块 ${currentSectionIndex + 1}`;
+        if (stageLabel) stageLabel.textContent = title;
+        if (stageName) stageName.textContent = title;
+        if (stageDots) {
+            stageDots.innerHTML = '';
+            stageSections.forEach((section, index) => {
+                const dot = document.createElement('span');
+                dot.className = `stage-dot${index === currentSectionIndex ? ' active' : ''}`;
+                stageDots.appendChild(dot);
+            });
+        }
+    }
+    function applySectionClasses() {
+        stageSections.forEach((section, index) => {
+            section.classList.remove('stage-active', 'stage-before', 'stage-after', 'stage-transitioning');
+            if (index === currentSectionIndex) section.classList.add('stage-active'); else if (index < currentSectionIndex) section.classList.add('stage-before'); else section.classList.add('stage-after');
+        });
+    }
+    function resetStageProgressUI() {
+        if (stageProgressBar) stageProgressBar.style.width = '0%';
+        if (stageGlobalProgressBar) stageGlobalProgressBar.style.width = '0%';
+        if (stageCountdownLabel) stageCountdownLabel.textContent = `${String(Math.ceil(STAGE_DURATION_MS / 1000)).padStart(2, '0')}s`;
+    }
+    function updateStageProgressUI(progress) {
+        const clamped = Math.max(0, Math.min(progress, 1));
+        const remainingMs = Math.max(0, STAGE_DURATION_MS * (1 - clamped));
+        if (stageProgressBar) stageProgressBar.style.width = `${clamped * 100}%`;
+        if (stageGlobalProgressBar) stageGlobalProgressBar.style.width = `${clamped * 100}%`;
+        if (stageCountdownLabel) stageCountdownLabel.textContent = `${String(Math.ceil(remainingMs / 1000)).padStart(2, '0')}s`;
+    }
+    function stopStageProgressLoop() { if (stageProgressFrame) { cancelAnimationFrame(stageProgressFrame); stageProgressFrame = null; } }
+    function startStageProgressLoop() {
+        stopStageProgressLoop();
+        if (!stageAutoplayEnabled || !presentationStarted || stageSections.length <= 1) return;
+        function tick(now) {
+            const elapsed = stagePausedElapsed + (now - stageTimerStartedAt);
+            const progress = elapsed / STAGE_DURATION_MS;
+            updateStageProgressUI(progress);
+            if (progress >= 1) { stagePausedElapsed = 0; showSection(currentSectionIndex + 1, false, true); return; }
+            stageProgressFrame = requestAnimationFrame(tick);
+        }
+        stageTimerStartedAt = performance.now();
+        stageProgressFrame = requestAnimationFrame(tick);
+    }
+    function pauseStageAutoplay() { if (!stageAutoplayEnabled) return; stagePausedElapsed += performance.now() - stageTimerStartedAt; stageAutoplayEnabled = false; stopStageProgressLoop(); }
+    function resumeStageAutoplay(resetCycle = false) { if (!presentationStarted || stageSections.length <= 1) return; if (resetCycle) { stagePausedElapsed = 0; resetStageProgressUI(); } stageAutoplayEnabled = true; startStageProgressLoop(); }
+    function syncStageAutoplayButton() { const button = document.getElementById('stageAutoplayToggle'); if (button) button.innerHTML = stageAutoplayEnabled ? '<i class="fas fa-pause"></i> 暂停' : '<i class="fas fa-play"></i> 继续'; }
+    function stopSampleAutoplay() { if (sampleAutoplayTimer) { window.clearInterval(sampleAutoplayTimer); sampleAutoplayTimer = null; } }
+    function startSampleAutoplay() { stopSampleAutoplay(); if (!sampleAutoplayEnabled || !presentationStarted || rotatingReports.length <= 1) return; sampleAutoplayTimer = window.setInterval(() => renderReportCard(currentReportIndex + 1), SAMPLE_DURATION_MS); }
+    function syncSampleAutoplayButton() { const button = document.getElementById('sampleAutoplayToggle'); if (button) button.innerHTML = sampleAutoplayEnabled ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>'; }
+    function renderReportCard(index) {
+        if (!rotatingReports.length) return;
+        currentReportIndex = (index + rotatingReports.length) % rotatingReports.length;
+        const report = rotatingReports[currentReportIndex];
+        const sampleName = document.getElementById('carouselSampleName');
+        const sampleTime = document.getElementById('carouselSampleTime');
+        const sampleProbability = document.getElementById('carouselProbability');
+        const summary = document.getElementById('carouselSummary');
+        const level = document.getElementById('carouselLevel');
+        const featureList = document.getElementById('carouselFeatures');
+        const detailLink = document.getElementById('carouselDetailLink');
+        const previewLink = document.getElementById('carouselPreviewLink');
+        const snapshotLink = document.getElementById('carouselSnapshotLink');
+        const heroProbability = document.getElementById('heroProbability');
+        const heroSampleName = document.getElementById('heroSampleName');
+        const heroLevelBadge = document.getElementById('heroLevelBadge');
+        const heroSampleMeta = document.getElementById('heroSampleMeta');
+        if (sampleName) sampleName.textContent = report.sample_id;
+        if (sampleTime) sampleTime.textContent = report.created_at;
+        if (sampleProbability) sampleProbability.textContent = `${report.probability}%`;
+        if (summary) summary.textContent = report.summary;
+        if (level) { level.textContent = report.level_label; level.className = `badge mt-2 bg-${report.level_badge}${report.level_badge === 'warning' ? ' text-dark' : ''}`; }
+        if (featureList) {
+            featureList.innerHTML = '';
+            (report.top_features.length ? report.top_features : ['暂无因子数据']).forEach((name) => { const li = document.createElement('li'); li.textContent = name; featureList.appendChild(li); });
+        }
+        if (detailLink) detailLink.href = `/reports/${report.report_id}`;
+        if (previewLink) previewLink.href = `/api/report/${report.report_id}/generate`;
+        if (snapshotLink) snapshotLink.href = `/reports/${report.report_id}/snapshot`;
+        if (heroProbability) heroProbability.textContent = `${Math.round(report.probability)}%`;
+        if (heroSampleName) heroSampleName.textContent = `样本编号：${report.sample_id}`;
+        if (heroSampleMeta) heroSampleMeta.textContent = `最近展示时间：${report.created_at}`;
+        if (heroLevelBadge) { heroLevelBadge.textContent = report.level_label; heroLevelBadge.className = `badge mt-2 bg-${report.level_badge}${report.level_badge === 'warning' ? ' text-dark' : ''}`; }
+        document.querySelectorAll('.sample-chip').forEach((chip, chipIndex) => chip.classList.toggle('active', chipIndex === currentReportIndex));
+    }
+    function showSection(index, instant = false, resetCycle = true) {
+        if (!stageSections.length) return;
+        currentSectionIndex = (index + stageSections.length) % stageSections.length;
+        applySectionClasses();
+        updateStageIndicators();
+        const section = stageSections[currentSectionIndex];
+        section.classList.add('stage-transitioning');
+        window.setTimeout(() => section.classList.remove('stage-transitioning'), 900);
+        section.scrollIntoView({ behavior: instant ? 'auto' : 'smooth', block: 'start' });
+        if (resetCycle) { stagePausedElapsed = 0; resetStageProgressUI(); if (stageAutoplayEnabled) startStageProgressLoop(); }
+    }
+    function startPresentationEngines() {
+        presentationStarted = true;
+        stageAutoplayEnabled = autoplayMode && stageSections.length > 1;
+        sampleAutoplayEnabled = rotatingReports.length > 1;
+        syncStageAutoplayButton();
+        syncSampleAutoplayButton();
+        stagePausedElapsed = 0;
+        resetStageProgressUI();
+        startSampleAutoplay();
+        if (autoplayMode) resumeStageAutoplay(true);
+    }
+    window.startGuidedMode = async function (requestFullscreenFirst) {
+        if (fullscreenGuide) fullscreenGuide.classList.remove('show');
+        if (requestFullscreenFirst) { try { await document.documentElement.requestFullscreen?.(); } catch (error) { console.warn('fullscreen request failed', error); } }
+        startPresentationEngines();
+    };
+    window.showReport = function (index) { renderReportCard(index); startSampleAutoplay(); };
+    window.nextReport = function () { renderReportCard(currentReportIndex + 1); startSampleAutoplay(); };
+    window.previousReport = function () { renderReportCard(currentReportIndex - 1); startSampleAutoplay(); };
+    window.toggleSampleAutoplay = function () { sampleAutoplayEnabled = !sampleAutoplayEnabled; syncSampleAutoplayButton(); startSampleAutoplay(); };
+    window.nextSection = function (resetCycle = false) { showSection(currentSectionIndex + 1, false, resetCycle); };
+    window.toggleFullscreen = async function () { try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.(); else await document.exitFullscreen?.(); } catch (error) { console.warn('toggle fullscreen failed', error); } };
+    const stageToggleButton = document.getElementById('stageAutoplayToggle');
+    if (stageToggleButton) {
+        stageToggleButton.addEventListener('click', function () {
+            if (!presentationStarted) return;
+            if (stageAutoplayEnabled) { pauseStageAutoplay(); sampleAutoplayEnabled = false; stopSampleAutoplay(); }
+            else { sampleAutoplayEnabled = rotatingReports.length > 1; resumeStageAutoplay(false); startSampleAutoplay(); }
+            syncStageAutoplayButton();
+            syncSampleAutoplayButton();
+        });
+    }
+    renderReportCard(0);
+    applySectionClasses();
+    updateStageIndicators();
+    resetStageProgressUI();
+    syncStageAutoplayButton();
+    syncSampleAutoplayButton();
+    showSection(0, true, false);
+    if (!autoplayMode) startPresentationEngines();
+});
+</script>
+{% endblock %}

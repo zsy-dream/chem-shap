@@ -1,0 +1,237 @@
+﻿{% extends "base.html" %}
+
+{% block title %}样本详细档案 - {{ sample.sample_id }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <a href="{{ url_for('web.samples') }}" class="btn btn-outline-light mb-3">
+            <i class="fas fa-arrow-left"></i> 返回样本列表
+        </a>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header"><i class="fas fa-vial"></i> 核心档案</div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="d-inline-block p-4 bg-light rounded-circle shadow-sm">
+                        <i class="fas fa-flask-vial fa-4x text-primary"></i>
+                    </div>
+                </div>
+                <table class="table table-borderless align-middle">
+                    <tr>
+                        <th class="text-muted">样本编号</th>
+                        <td class="fw-bold">{{ sample.sample_id }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">实验轮次</th>
+                        <td>第 {{ sample.experiment_round or '1' }} 轮</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">实验分组</th>
+                        <td><span class="badge bg-primary px-3 rounded-pill">{{ sample.experiment_group or '默认组'
+                                }}</span></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">建档日期</th>
+                        <td><small>{{ sample.created_at.strftime('%Y-%m-%d %H:%M') }}</small></td>
+                    </tr>
+                </table>
+
+                {% if latest_report %}
+                <div class="alert alert-info border-0 shadow-sm mt-4">
+                    <div class="fw-bold mb-2"><i class="fas fa-microchip"></i> 最新 AI 预测</div>
+                    <div class="display-6 fw-bold text-primary">{{ '%.1f'|format((latest_report.success_probability or
+                        0) * 100) }}%</div>
+                    <div class="small text-muted mt-2">判定结果：<span class="fw-semibold text-dark">{{
+                            get_result_level(latest_report.success_probability).label }}</span></div>
+
+                    <div class="mt-3 p-2 bg-white rounded-3">
+                        <canvas id="sampleTrendChart" height="120"></canvas>
+                    </div>
+
+                    <div class="mt-3">
+                        <a href="{{ url_for('web.report_detail', report_id=latest_report.id) }}"
+                            class="btn btn-sm btn-primary w-100 rounded-pill">
+                            <i class="fas fa-magnifying-glass"></i> 查看解析报告
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+                <button class="btn btn-success w-100 mt-3 rounded-pill" data-bs-toggle="modal"
+                    data-bs-target="#uploadRecordModal">
+                    <i class="fas fa-file-import"></i> 录入新实验数据
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card shadow-sm h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-history"></i> 历史实验记录 ({{ records|length }})</span>
+                <span class="badge bg-light text-primary">按时间倒序</span>
+            </div>
+            <div class="card-body">
+                {% if records %}
+                <div class="row g-4">
+                    {% for card in record_cards %}
+                    <div class="col-12">
+                        <div class="border rounded-4 p-4 hover-shadow transition-all">
+                            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                                <div>
+                                    <h5 class="mb-1 text-primary">实验记录 #{{ card.record.id }}</h5>
+                                    <div class="text-muted small">
+                                        <i class="fas fa-clock me-1"></i> 记录时间：{{
+                                        card.record.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                                    </div>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <a href="{{ url_for('web.analysis', sample_id=sample.id) }}"
+                                        class="btn btn-sm btn-success rounded-pill px-3">
+                                        <i class="fas fa-wand-magic-sparkles"></i> 启动 SHAP 分析
+                                    </a>
+                                </div>
+                            </div>
+
+                            <div class="row g-3 mb-4">
+                                {% for item in card.highlight_items %}
+                                <div class="col-md-6 col-lg-4">
+                                    <div class="p-3 bg-light rounded-3 border-start border-primary border-4">
+                                        <div class="small text-muted mb-1">{{ item.label }}</div>
+                                        <div class="h5 mb-0 fw-bold">{{ item.formatted_value }}</div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <details class="bg-light p-3 rounded-3 border">
+                                <summary class="fw-semibold text-muted cursor-pointer">
+                                    <i class="fas fa-list-check me-2"></i> 展开完整实验条件清单
+                                </summary>
+                                <div class="row g-2 mt-3 px-2">
+                                    {% for item in card.feature_items %}
+                                    <div class="col-md-6 col-lg-4">
+                                        <div class="d-flex justify-content-between border-bottom pb-2">
+                                            <span class="text-muted small">{{ item.label }}</span>
+                                            <strong class="small">{{ item.formatted_value }}</strong>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-circle-xmark fa-4x text-muted mb-3"></i>
+                    <p class="text-muted">该样本尚未录入任何实验记录。</p>
+                    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal"
+                        data-bs-target="#uploadRecordModal">
+                        <i class="fas fa-plus me-1"></i> 立即上传实验 CSV 数据
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Record Modal -->
+<div class="modal fade" id="uploadRecordModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-upload"></i> 录入单次实验条件数据</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadRecordForm" enctype="multipart/form-data">
+                    <div class="alert alert-warning small">
+                        <i class="fas fa-circle-exclamation"></i> <strong>注意：</strong>上传文件必须为 CSV 格式，首行需包含模型所需的特征列名（如
+                        <code>reaction_temperature</code>, <code>ph_value</code> 等）。
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">选择数据文件</label>
+                        <input type="file" class="form-control" name="data_file" accept=".csv" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary px-4" onclick="uploadRecord()">
+                    <i class="fas fa-cloud-arrow-up me-1"></i> 确认上传
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const trendData = {{ history_json| safe
+    }};
+    if (document.getElementById('sampleTrendChart') && trendData.values.length > 0) {
+        new Chart(document.getElementById('sampleTrendChart'), {
+            type: 'line',
+            data: {
+                labels: trendData.labels,
+                datasets: [{
+                    label: '成功率 (%)',
+                    data: trendData.values,
+                    borderColor: '#4361ee',
+                    backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { min: 0, max: 100, ticks: { font: { size: 10 } } },
+                    x: { display: false }
+                }
+            }
+        });
+    }
+    });
+
+    function uploadRecord() {
+        const form = document.getElementById('uploadRecordForm');
+        const formData = new FormData(form);
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+        showLoading();
+        fetch('/upload_record/{{ sample.id }}', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                hideLoading();
+                if (response.redirected) {
+                    window.location.href = response.url;
+                } else {
+                    return response.text();
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('数据上传或处理失败：' + error);
+            });
+    }
+</script>
+{% endblock %}

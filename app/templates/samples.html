@@ -1,0 +1,312 @@
+﻿{% extends "base.html" %}
+
+{% block title %}样本中心 - 智析实验{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="glass-card text-center p-4 h-100">
+            <h1 class="display-6 fw-bold text-dark mb-1">{{ samples.total }}</h1>
+            <div class="small text-dark"><i class="fas fa-database me-1"></i> 档案库样本总量</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card text-center p-4 h-100">
+            <h1 class="display-6 fw-bold text-success mb-1">{{ '%.1f'|format(avg_prob) }}%</h1>
+            <div class="small text-dark"><i class="fas fa-chart-line me-1"></i> 全局平均成功率</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card text-center p-4 h-100 border-start border-warning border-4">
+            <h1 class="display-6 fw-bold text-warning mb-1">{{ '%.1f'|format(best_prob) }}%</h1>
+            <div class="small text-dark"><i class="fas fa-trophy me-1"></i> 最高预测评级</div>
+            <div class="badge bg-warning text-dark mt-2 x-small">{{ best_sample_id }}</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="glass-card p-3 h-100 d-flex flex-column justify-content-center">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-dark">活跃分组分布</span>
+                <span class="badge bg-success rounded-pill px-2" style="font-size: 0.7rem;">实时同步</span>
+            </div>
+            <div style="height: 60px;">
+                <canvas id="groupChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="text-dark mb-0"><i class="fas fa-braille text-primary me-2"></i> 样本特征分布散点映射 (Temp vs
+                    Success)</h5>
+                <div class="badge bg-light text-dark border px-3 py-2">数据源: 归因系统底层宽表</div>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="scatterChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-list"></i> 样本档案列表</span>
+        <span class="badge bg-light text-primary">共 {{ samples.total }} 个样本</span>
+    </div>
+    <div class="card-body">
+        {% if samples.items %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>样本展示编号</th>
+                        <th>当前轮次</th>
+                        <th>所属分组</th>
+                        <th>记录数</th>
+                        <th>最近成功率</th>
+                        <th>建档日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sample in samples.items %}
+                    <tr>
+                        <td>{{ sample.id }}</td>
+                        <td><strong>{{ sample.sample_id }}</strong></td>
+                        <td>第 {{ sample.experiment_round or '1' }} 轮</td>
+                        <td><span class="badge bg-primary px-3 rounded-pill">{{ sample.experiment_group or '默认组'
+                                }}</span></td>
+                        <td><span class="badge bg-light text-dark">{{ sample.records.count() }} 条</span></td>
+                        <td>
+                            {% set latest = latest_reports.get(sample.id) %}
+                            {% if latest %}
+                            {% set score = (latest.success_probability or 0) * 100 %}
+                            <div class="d-flex align-items-center">
+                                <span
+                                    class="badge {{ 'bg-success' if score >= 75 else 'bg-primary' if score >= 50 else 'bg-warning text-dark' }} px-3 rounded-pill">
+                                    {{ '%.1f'|format(score) }}%
+                                </span>
+                            </div>
+                            {% else %}
+                            <span class="text-muted small">暂无预测报告</span>
+                            {% endif %}
+                        </td>
+                        <td><small class="text-muted">{{ sample.created_at.strftime('%Y-%m-%d') }}</small></td>
+                        <td>
+                            <a href="{{ url_for('web.sample_detail', sample_id=sample.id) }}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> 详细档案
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if samples.pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if samples.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('web.samples', page=samples.prev_num) }}">上一页</a>
+                </li>
+                {% endif %}
+
+                {% for page_num in samples.iter_pages() %}
+                {% if page_num %}
+                <li class="page-item {{ 'active' if page_num == samples.page }}">
+                    <a class="page-link" href="{{ url_for('web.samples', page=page_num) }}">{{ page_num }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+                {% endfor %}
+
+                {% if samples.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('web.samples', page=samples.next_num) }}">下一页</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-vial-circle-check fa-4x text-muted mb-3"></i>
+            <p class="text-muted">当前库中尚无样本记录。</p>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSampleModal">
+                <i class="fas fa-plus"></i> 创建首个实验样本
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Add Sample Modal -->
+<div class="modal fade" id="addSampleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="fas fa-plus-circle"></i> 新增实验样本档案</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSampleForm">
+                    <div class="mb-3">
+                        <label class="form-label">样本展示编号</label>
+                        <input type="text" class="form-control" name="sample_id" required placeholder="如：CAT-2024-X1">
+                        <div class="form-text">用于答辩大屏展示的唯一名称。</div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">初始轮次</label>
+                            <input type="number" class="form-control" name="experiment_round" required min="1"
+                                max="1000" value="1">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">实验分组</label>
+                            <select class="form-select" name="experiment_group" required>
+                                <option value="对照组">对照组</option>
+                                <option value="实验A组">实验A组</option>
+                                <option value="实验B组">实验B组</option>
+                                <option value="优化组">优化组</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary px-4" onclick="submitSample()">
+                    <i class="fas fa-save me-1"></i> 立即建档
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="groupStatsData">{{ group_stats_json|safe }}</script>
+<script type="application/json" id="scatterData">{{ scatter_data_json|safe }}</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+// Group Chart (Bar)
+const groupStats = JSON.parse(document.getElementById('groupStatsData').textContent || '{}');
+new Chart(document.getElementById('groupChart'), {
+type: 'bar',
+data: {
+labels: groupStats.labels,
+datasets: [{
+label: '样本数量',
+data: groupStats.values,
+backgroundColor: 'rgba(46, 196, 182, 0.7)',
+borderRadius: 4
+}]
+},
+options: {
+indexAxis: 'y',
+responsive: true,
+maintainAspectRatio: false,
+plugins: { legend: { display: false }, tooltip: { enabled: true } },
+scales: {
+x: { display: false, grid: { display: false } },
+y: { grid: { display: false }, ticks: { color: 'rgba(15,23,42,0.75)', font: { size: 10 } } }
+}
+}
+});
+
+// Scatter Chart (Temp vs Prob)
+const scatterData = JSON.parse(document.getElementById('scatterData').textContent || '[]');
+const scatterChartEl = document.getElementById('scatterChart');
+if (scatterData && scatterData.length > 0) {
+new Chart(scatterChartEl, {
+type: 'scatter',
+data: {
+datasets: [{
+label: '样本实例',
+data: scatterData,
+backgroundColor: 'rgba(67, 97, 238, 0.6)',
+borderColor: '#4361ee',
+pointRadius: 6,
+pointHoverRadius: 8
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { display: false },
+tooltip: {
+callbacks: {
+label: function(context) {
+return `温度: ${context.parsed.x}℃, 概率: ${context.parsed.y.toFixed(1)}%`;
+}
+}
+}
+},
+scales: {
+x: {
+title: { display: true, text: '提取特征：反应温度 (℃)', color: 'rgba(15,23,42,0.7)' },
+grid: { color: 'rgba(15,23,42,0.08)' },
+ticks: { color: 'rgba(15,23,42,0.7)' }
+},
+y: {
+title: { display: true, text: '模型判定概率 (%)', color: 'rgba(15,23,42,0.7)' },
+grid: { color: 'rgba(15,23,42,0.08)' },
+ticks: { color: 'rgba(15,23,42,0.7)' },
+min: 0, max: 100
+}
+}
+}
+});
+} else if (scatterChartEl) {
+// 显示无数据提示
+const ctx = scatterChartEl.getContext('2d');
+ctx.font = '14px Arial';
+ctx.fillStyle = '#6c757d';
+ctx.textAlign = 'center';
+ctx.fillText('暂无足够数据生成散点图', scatterChartEl.width / 2, scatterChartEl.height / 2);
+}
+});
+
+function submitSample() {
+const form = document.getElementById('addSampleForm');
+const formData = new FormData(form);
+const data = Object.fromEntries(formData);
+
+if (!data.sample_id) {
+alert('请填写样本编号');
+return;
+}
+
+showLoading();
+fetch('/api/data/samples', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json'
+},
+body: JSON.stringify(data)
+})
+.then(response => response.json())
+.then(data => {
+hideLoading();
+if (data.sample_id) {
+location.reload();
+} else {
+alert('建档失败：' + (data.error || '未知错误'));
+}
+})
+.catch(error => {
+hideLoading();
+alert('系统请求失败：' + error);
+});
+}
+</script>
+{% endblock %}

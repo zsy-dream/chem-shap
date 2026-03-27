@@ -1,0 +1,174 @@
+﻿{% extends "base.html" %}
+
+{% block title %}报告中心 - 智析实验{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold"><i class="fas fa-file-lines"></i> 历史分析报告</h2>
+        <p class="text-muted">回溯并导出所有实验样本的归因分析结果，支持生成快照截图。</p>
+    </div>
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="glass-card text-center p-3">
+                <div class="h3 fw-bold mb-0">{{ reports.total }}</div>
+                <div class="small text-muted">累计生成报告</div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div class="glass-card p-3 d-flex align-items-center justify-content-around">
+                <div class="text-center">
+                    <div class="badge bg-success rounded-pill px-3 mb-1">优秀结果</div>
+                    <div class="h5 mb-0">动态统计中...</div>
+                </div>
+                <div class="text-center border-start border-end border-white-10 px-4">
+                    <div class="badge bg-primary rounded-pill px-3 mb-1">良好结论</div>
+                    <div class="h5 mb-0">实时解析中</div>
+                </div>
+                <div class="text-center">
+                    <div class="badge bg-warning text-dark rounded-pill px-3 mb-1">需优化项</div>
+                    <div class="h5 mb-0">模型建议中</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="fas fa-list"></i> 分析报告中心</div>
+        <div class="card-body">
+            {% if reports.items %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>报告ID</th>
+                            <th>实验样本</th>
+                            <th>预测模型</th>
+                            <th>判定等级</th>
+                            <th>成功概率</th>
+                            <th>生成时间</th>
+                            <th>多维操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports.items %}
+                        <tr>
+                            <td><strong>#{{ report.id }}</strong></td>
+                            <td>
+                                {% if report.sample %}
+                                <a href="{{ url_for('web.sample_detail', sample_id=report.sample_id) }}"
+                                    class="text-decoration-none">
+                                    <i class="fas fa-vial me-1"></i> {{ report.sample.sample_id }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted">样本已移除</span>
+                                {% endif %}
+                            </td>
+                            <td>{% if report.model %}<span class="badge bg-primary px-3 rounded-pill">{{
+                                    report.model.name
+                                    }}</span>{% else %}-{% endif %}</td>
+                            <td>
+                                {% set level = get_result_level(report.success_probability or 0) %}
+                                <span
+                                    class="badge bg-{{ level.badge }} {{ 'text-dark' if level.badge == 'warning' else '' }} px-3 rounded-pill">
+                                    {{ level.label }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-{{ level.badge if level.badge != 'warning' else 'primary' }}">
+                                    {{ '%.1f'|format((report.success_probability or 0) * 100) }}%
+                                </div>
+                            </td>
+                            <td><small class="text-muted">{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
+                            <td class="text-nowrap">
+                                <a href="{{ url_for('web.report_detail', report_id=report.id) }}"
+                                    class="btn btn-sm btn-outline-primary" title="详情解析">
+                                    <i class="fas fa-magnifying-glass-chart"></i> 详情
+                                </a>
+                                <a href="{{ url_for('web.report_snapshot', report_id=report.id) }}"
+                                    class="btn btn-sm btn-outline-warning text-dark" title="答辩截图页">
+                                    <i class="fas fa-camera"></i> 截图
+                                </a>
+                                <a class="btn btn-sm btn-success" href="/api/report/{{ report.id }}/pdf" title="导出 PDF 报告">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                                <a class="btn btn-sm btn-outline-info" href="/api/report/{{ report.id }}/generate" title="HTML 预览">
+                                    <i class="fas fa-file-lines"></i> HTML
+                                </a>
+                                <button class="btn btn-sm btn-outline-secondary" data-report-id="{{ report.id }}" onclick="downloadReport(this.dataset.reportId)"
+                                    title="导出 JSON 存档">
+                                    <i class="fas fa-code"></i> JSON
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if reports.pages > 1 %}
+            <nav class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if reports.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('web.reports', page=reports.prev_num) }}">上一页</a>
+                    </li>
+                    {% endif %}
+
+                    {% for page_num in reports.iter_pages() %}
+                    {% if page_num %}
+                    <li class="page-item {{ 'active' if page_num == reports.page }}">
+                        <a class="page-link" href="{{ url_for('web.reports', page=page_num) }}">{{ page_num }}</a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                    {% endfor %}
+
+                    {% if reports.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('web.reports', page=reports.next_num) }}">下一页</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-file-circle-xmark fa-4x text-muted mb-3"></i>
+                <p class="text-muted">暂无任何分析报告，请先录入实验记录并执行分析。</p>
+                <a href="{{ url_for('web.analysis') }}" class="btn btn-primary"><i class="fas fa-chart-line"></i>
+                    立即开始分析</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block extra_js %}
+    <script>
+        function downloadReport(reportId) {
+            showLoading();
+            fetch(`/api/report/${reportId}/export`)
+                .then(response => response.json())
+                .then(data => {
+                    hideLoading();
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `experiment_report_${reportId}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    hideLoading();
+                    alert('详细报告数据导出失败：' + error);
+                });
+        }
+    </script>
+    {% endblock %}

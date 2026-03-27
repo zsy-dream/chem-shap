@@ -1,0 +1,416 @@
+{% extends "base.html" %}
+
+{% block title %}因子敏感性分析{% endblock %}
+
+{% block extra_css %}
+<style>
+.sensitivity-hero {
+    background: linear-gradient(135deg, #3a0ca3 0%, #4361ee 50%, #4cc9f0 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+.heatmap-container {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    min-height: 400px;
+}
+.heatmap-grid {
+    display: grid;
+    gap: 1px;
+    background: #dee2e6;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.heatmap-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    position: relative;
+}
+.heatmap-cell:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border-radius: 4px;
+}
+.heatmap-cell .tooltip-text {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1a1a2e;
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    z-index: 20;
+}
+.heatmap-cell:hover .tooltip-text {
+    display: block;
+}
+.heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.heatmap-gradient {
+    width: 200px;
+    height: 16px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 25%, #93c5fd 50%, #fcd34d 75%, #ef4444 100%);
+}
+.sensitivity-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    border-left: 4px solid #4361ee;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    margin-bottom: 1rem;
+}
+.sensitivity-score-bar {
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+.sensitivity-score-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4361ee, #4cc9f0);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+}
+.feature-selector {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.feature-selector:hover, .feature-selector.active {
+    border-color: #4361ee;
+    background: #f0f4ff;
+}
+.optimal-point {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #10b981;
+    border: 2px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px #10b981;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.8; }
+}
+.axis-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-align: center;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="sensitivity-hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h2 class="mb-2"><i class="fas fa-fire-flame-curved me-2"></i>因子敏感性分析</h2>
+                <p class="mb-1 opacity-75">探索不同实验参数对成功率的影响</p>
+                <p class="mb-0 opacity-75 small">基准样本：<strong>{{ base_sample.sample_id if base_sample else '默认' }}</strong> | 模型：<strong>{{ model_name }}</strong></p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <span class="badge bg-light text-dark fs-6">
+                    <i class="fas fa-info-circle me-1"></i>XAI 可解释性分析
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <!-- 特征选择器 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label class="form-label fw-bold">X轴特征（横轴）</label>
+            <select id="featureX" class="form-select form-select-lg">
+                {% for opt in feature_options %}
+                <option value="{{ opt.key }}" {{ 'selected' if opt.key == feature_x }}>
+                    {{ opt.label }} {% if opt.unit %}({{ opt.unit }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">Y轴特征（纵轴）</label>
+            <select id="featureY" class="form-select form-select-lg">
+                {% for opt in feature_options %}
+                <option value="{{ opt.key }}" {{ 'selected' if opt.key == feature_y }}>
+                    {{ opt.label }} {% if opt.unit %}({{ opt.unit }}){% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- 热力图区域 -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-border-all me-2"></i>双因素敏感性热力图</span>
+                    <button id="analyzeBtn" class="btn btn-primary btn-sm">
+                        <i class="fas fa-play me-1"></i>重新分析
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="heatmapContainer" class="heatmap-container">
+                        <div id="heatmapGrid" class="heatmap-grid"></div>
+                    </div>
+                    <div class="heatmap-legend">
+                        <span class="small text-muted">低成功率</span>
+                        <div class="heatmap-gradient"></div>
+                        <span class="small text-muted">高成功率</span>
+                    </div>
+                    <div class="d-flex justify-content-center gap-4 mt-2">
+                        <span class="small text-muted"><i class="fas fa-circle text-success me-1"></i>最优参数点</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最优参数建议 -->
+            <div id="optimalSuggestion" class="card shadow-sm mt-4" style="display: none;">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-lightbulb me-2"></i>最优参数组合建议
+                </div>
+                <div class="card-body">
+                    <div class="row g-3" id="optimalContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 敏感性排名 -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header">
+                    <i class="fas fa-ranking-star me-2"></i>特征敏感性排名
+                </div>
+                <div class="card-body" id="sensitivityRanking">
+                    <!-- 动态填充 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="heatmapData">{{ heatmap_json|safe }}</script>
+<script type="application/json" id="sensitivityData">{{ sensitivity_json|safe }}</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const heatmapData = JSON.parse(document.getElementById('heatmapData').textContent || '{}');
+        const sensitivityData = JSON.parse(document.getElementById('sensitivityData').textContent || '[]');
+        
+        // 颜色映射函数 - 蓝到黄到红
+        function getColorForProbability(prob, min, max) {
+            const ratio = (prob - min) / (max - min || 1);
+            if (ratio < 0.5) {
+                // 蓝色到黄色
+                const r = Math.round(59 + (252 - 59) * ratio * 2);
+                const g = Math.round(130 + (211 - 130) * ratio * 2);
+                const b = Math.round(246 + (77 - 246) * ratio * 2);
+                return `rgb(${r}, ${g}, ${b})`;
+            } else {
+                // 黄色到红色
+                const r = Math.round(252 + (239 - 252) * (ratio - 0.5) * 2);
+                const g = Math.round(211 + (68 - 211) * (ratio - 0.5) * 2);
+                const b = Math.round(77 + (68 - 77) * (ratio - 0.5) * 2);
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+        }
+        
+        // 渲染热力图
+        function renderHeatmap(data) {
+            if (!data || !data.heatmap) return;
+            
+            const container = document.getElementById('heatmapGrid');
+            const matrix = data.heatmap;
+            const valuesX = data.values_x;
+            const valuesY = data.values_y;
+            
+            // 计算概率范围
+            const allProbs = matrix.flat();
+            const minProb = Math.min(...allProbs);
+            const maxProb = Math.max(...allProbs);
+            
+            // 设置网格样式
+            container.style.gridTemplateColumns = `repeat(${matrix[0].length}, 1fr)`;
+            container.innerHTML = '';
+            
+            // 渲染单元格（从底部开始，因为Y轴通常向上增大）
+            for (let row = matrix.length - 1; row >= 0; row--) {
+                for (let col = 0; col < matrix[row].length; col++) {
+                    const prob = matrix[row][col];
+                    const cell = document.createElement('div');
+                    cell.className = 'heatmap-cell';
+                    cell.style.backgroundColor = getColorForProbability(prob, minProb, maxProb);
+                    cell.style.color = prob > 60 ? 'white' : '#1f2937';
+                    cell.style.aspectRatio = '1';
+                    cell.textContent = Math.round(prob) + '%';
+                    
+                    // 工具提示
+                    const tooltip = document.createElement('span');
+                    tooltip.className = 'tooltip-text';
+                    tooltip.innerHTML = `
+                        ${data.label_y}: ${valuesY[row].toFixed(2)}${data.unit_y}<br>
+                        ${data.label_x}: ${valuesX[col].toFixed(2)}${data.unit_x}<br>
+                        成功率: ${prob.toFixed(1)}%
+                    `;
+                    cell.appendChild(tooltip);
+                    
+                    // 标记最优解
+                    if (data.optimal_point && 
+                        Math.abs(valuesY[row] - data.optimal_point[data.feature_y]) < 0.001 &&
+                        Math.abs(valuesX[col] - data.optimal_point[data.feature_x]) < 0.001) {
+                        const marker = document.createElement('div');
+                        marker.className = 'optimal-point';
+                        cell.appendChild(marker);
+                    }
+                    
+                    container.appendChild(cell);
+                }
+            }
+            
+            // 显示最优建议
+            if (data.optimal_point) {
+                const suggestionCard = document.getElementById('optimalSuggestion');
+                const content = document.getElementById('optimalContent');
+                suggestionCard.style.display = 'block';
+                content.innerHTML = `
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <div class="small text-muted">${data.label_x}</div>
+                            <div class="fs-4 fw-bold text-success">${data.optimal_point[data.feature_x].toFixed(2)} ${data.unit_x}</div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 bg-light rounded">
+                            <div class="small text-muted">${data.label_y}</div>
+                            <div class="fs-4 fw-bold text-success">${data.optimal_point[data.feature_y].toFixed(2)} ${data.unit_y}</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 bg-success bg-opacity-10 rounded text-center">
+                            <div class="small text-muted">预测最高成功率</div>
+                            <div class="fs-3 fw-bold text-success">${data.max_probability}%</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // 渲染敏感性排名
+        function renderSensitivityRanking(data) {
+            const container = document.getElementById('sensitivityRanking');
+            if (!data || data.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center py-4">暂无数据</div>';
+                return;
+            }
+            
+            const maxScore = Math.max(...data.map(d => d.sensitivity_score));
+            
+            container.innerHTML = data.map((item, index) => `
+                <div class="sensitivity-card">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary">${index + 1}</span>
+                            <span class="fw-bold">${item.label}</span>
+                        </div>
+                        <span class="small text-muted">${item.sensitivity_score.toFixed(1)}%</span>
+                    </div>
+                    <div class="sensitivity-score-bar">
+                        <div class="sensitivity-score-fill" style="width: ${(item.sensitivity_score / maxScore * 100).toFixed(1)}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2 small text-muted">
+                        <span>最优值: ${item.optimal_value.toFixed(2)}${item.unit}</span>
+                        <span>最高成功率: ${item.max_probability.toFixed(1)}%</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // 初始渲染
+        renderHeatmap(heatmapData);
+        renderSensitivityRanking(sensitivityData);
+        
+        // 重新分析按钮
+        document.getElementById('analyzeBtn').addEventListener('click', function() {
+            const featureX = document.getElementById('featureX').value;
+            const featureY = document.getElementById('featureY').value;
+            
+            if (featureX === featureY) {
+                alert('X轴和Y轴不能选择相同的特征');
+                return;
+            }
+            
+            // 显示加载状态
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>分析中...';
+            this.disabled = true;
+            
+            // 调用API
+            fetch('/api/sensitivity/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    feature_x: featureX,
+                    feature_y: featureY
+                })
+            })
+            .then(res => {
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+            const contentType = res.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('服务器返回非JSON数据，可能已登出或服务器错误');
+            }
+            return res.json();
+        })
+            .then(data => {
+                if (data.success) {
+                    renderHeatmap(data.heatmap);
+                    renderSensitivityRanking(data.sensitivities);
+                } else {
+                    alert('分析失败: ' + (data.error || '未知错误'));
+                }
+            })
+            .catch(err => {
+                console.error('请求失败:', err);
+                alert('请求失败: ' + (err.message || '网络错误'));
+            })
+            .finally(() => {
+                this.innerHTML = '<i class="fas fa-play me-1"></i>重新分析';
+                this.disabled = false;
+            });
+        });
+    });
+</script>
+{% endblock %}

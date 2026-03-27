@@ -1,0 +1,613 @@
+﻿{% extends "base.html" %}
+
+{% block title %}首页 - 智析实验 SHAP 归因平台{% endblock %}
+
+{% block extra_css %}
+<style>
+    .panel-dark {
+        background: linear-gradient(135deg, rgba(8, 17, 34, 0.94), rgba(30, 41, 59, 0.94));
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: white;
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+    }
+
+    .score-ring {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.05), rgba(67, 97, 238, 0.2));
+        border: 8px solid rgba(46, 196, 182, 0.3);
+    }
+
+    .sample-chip {
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.05);
+        color: white;
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .sample-chip.active {
+        background: rgba(46, 196, 182, 0.3);
+        border-color: #2ec4b6;
+    }
+
+    .mini-card {
+        background: rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        padding: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+
+    .carousel-text {
+        color: rgba(255, 255, 255, 0.95) !important;
+    }
+
+    .hero-title {
+        white-space: nowrap;
+        overflow: visible;
+        max-width: 100%;
+        line-height: 1.15;
+        font-size: clamp(1.75rem, 2.45vw, 3rem);
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            white-space: normal;
+            line-clamp: 2;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .hero-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    }
+
+    .hero-subtitle {
+        color: rgba(255, 255, 255, 0.86) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="row mb-5">
+    <div class="col-lg-12">
+        <div class="panel-dark position-relative overflow-hidden">
+            <div class="position-absolute top-0 end-0 p-4 opacity-25">
+                <i class="fas fa-microscope fa-8x"></i>
+            </div>
+            <div class="row align-items-center">
+                <div class="col-lg-9">
+                    <div class="mb-3">
+                        <span class="hero-chip"><i class="fas fa-shield-halved"></i> 智析科研核心系统</span>
+                        <span class="hero-chip"><i class="fas fa-atom"></i> 分子动力学模拟支撑</span>
+                        <span class="hero-chip"><i class="fas fa-wand-magic-sparkles"></i> AI 驱动优化</span>
+                    </div>
+                    <h1 class="display-5 fw-bold mb-3 hero-title">化学实验多维条件归因与先验优化平台</h1>
+                    <p class="lead mb-4 hero-subtitle">融合 SHAP 可解释性算法与深度学习模型，精准量化每一项参数对实验成功率的边际贡献。</p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <a href="/analysis" class="btn btn-success btn-lg px-4"><i class="fas fa-bolt me-2"></i> 开启 SHAP
+                            归因</a>
+                        <a href="/samples" class="btn btn-primary btn-lg px-4"><i class="fas fa-vial me-2"></i>
+                            实验样本档案</a>
+                    </div>
+                </div>
+                <div class="col-lg-3 text-center d-none d-lg-block">
+                    <div class="score-ring shadow-lg mb-3">
+                        <div class="small opacity-75">全库平均成功率</div>
+                        <strong class="fs-2">{{ stats.avg_success_rate if stats.avg_success_rate is not none else 0 }}%</strong>
+                    </div>
+                    <div class="badge bg-success rounded-pill px-3">系统运行状态：最优</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Section -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="stat-card hover-shadow transition-all">
+            <div class="stat-icon"><i class="fas fa-vials"></i></div>
+            <div class="stat-value">{{ stats.samples or 0 }}</div>
+            <div class="stat-label">总实验样本数</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card hover-shadow transition-all">
+            <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-value">{{ stats.analyses or 0 }}</div>
+            <div class="stat-label">累计 SHAP 分析报告</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card hover-shadow transition-all">
+            <div class="stat-icon"><i class="fas fa-microchip"></i></div>
+            <div class="stat-value">{{ stats.active_models or 0 }}</div>
+            <div class="stat-label">运行中预测内核</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card hover-shadow transition-all">
+            <div class="stat-icon"><i class="fas fa-network-wired"></i></div>
+            <div class="stat-value">{{ stats.cv_accuracy if stats.cv_accuracy is not none else 0 }}%</div>
+            <div class="stat-label">模型交叉验证精度</div>
+        </div>
+    </div>
+</div>
+
+<!-- Trends & Hot Features -->
+<div class="row g-4 mb-5">
+    <div class="col-lg-7">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-wave-square me-2"></i> 近期实验趋势动态</span>
+                <span class="badge bg-light text-dark">最近 12 次实验</span>
+            </div>
+            <div class="card-body">
+                <canvas id="trendChart" height="130"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100 shadow-sm border-0 bg-light">
+            <div class="card-header bg-dark text-white border-0"><i class="fas fa-fire me-2"></i> 高频关键影响因子 (Global SHAP)
+            </div>
+            <div class="card-body">
+                <canvas id="hotspotChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-7">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-chart-area me-2"></i> 成功率追踪时间线</span>
+                <span class="badge bg-light text-dark">最近 12 份报告</span>
+            </div>
+            <div class="card-body">
+                <canvas id="probabilityTimelineChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header"><i class="fas fa-layer-group me-2"></i> 样本分组构成</div>
+            <div class="card-body">
+                <canvas id="groupDistributionChart" height="160"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-scale-balanced me-2"></i> 对照组 vs 优化组 KPI 对比</span>
+                <span class="badge bg-light text-dark">自动汇总</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="p-3 rounded bg-light h-100">
+                            <div class="small text-muted">平均成功率(%)</div>
+                            <canvas id="groupAvgSuccessChart" height="120"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 rounded bg-light h-100">
+                            <div class="small text-muted">优秀率(%)</div>
+                            <canvas id="groupExcellentRateChart" height="120"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 rounded bg-white border">
+                            <div class="small text-muted mb-2">Top3 影响因子（组内聚合）</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="fw-bold mb-2">对照组</div>
+                                    <ol id="controlTopFeatures" class="small mb-0 ps-3"></ol>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="fw-bold mb-2">优化组</div>
+                                    <ol id="optTopFeatures" class="small mb-0 ps-3"></ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 rounded bg-primary bg-opacity-10 border border-primary">
+                            <div class="small text-muted mb-2">统计显著性（Bootstrap 95% CI + 置换检验 p-value）</div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="small fw-bold">平均成功率提升</div>
+                                    <div class="d-flex align-items-baseline gap-2">
+                                        <span class="fs-4 fw-bold text-success" id="sigAvgDiff">--%</span>
+                                        <span class="small text-muted">95%CI [<span id="sigAvgCiLow">--</span>, <span id="sigAvgCiHigh">--</span>]</span>
+                                    </div>
+                                    <div class="small text-muted">n(对照)=<span id="sigAvgNControl">--</span> | n(优化)=<span id="sigAvgNOpt">--</span> | p=<span id="sigAvgP">--</span></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small fw-bold">优秀率提升</div>
+                                    <div class="d-flex align-items-baseline gap-2">
+                                        <span class="fs-4 fw-bold text-success" id="sigExcDiff">--%</span>
+                                        <span class="small text-muted">95%CI [<span id="sigExcCiLow">--</span>, <span id="sigExcCiHigh">--</span>]</span>
+                                    </div>
+                                    <div class="small text-muted">n(对照)=<span id="sigExcNControl">--</span> | n(优化)=<span id="sigExcNOpt">--</span> | p=<span id="sigExcP">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-arrow-trend-up me-2"></i> 实验轮次提升曲线</span>
+                <span class="badge bg-light text-dark" id="improvementSampleId">样本：-</span>
+            </div>
+            <div class="card-body">
+                <canvas id="improvementStoryChart" height="170"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-border-all me-2"></i> 特征相关性热力图</span>
+                <span class="badge bg-light text-dark">Pearson Corr</span>
+            </div>
+            <div class="card-body">
+                <div class="small text-muted mb-2">颜色越红表示正相关越强，越蓝表示负相关越强。</div>
+                <div id="correlationHeatmap" class="table-responsive"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-chart-pie me-2"></i> 实验结果等级分布</span>
+                <span class="badge bg-light text-dark">基于报告判定</span>
+            </div>
+            <div class="card-body">
+                <canvas id="resultDistributionChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Carousel & Radar -->
+<div class="row g-4 mb-5">
+    <div class="col-lg-6">
+        <div class="panel-dark p-4 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-white"><i class="fas fa-star me-2"></i> 代表性样本归因速览</h5>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-light border-0" onclick="prevReport()"><i
+                            class="fas fa-chevron-left"></i></button>
+                    <button class="btn btn-sm btn-outline-light border-0" onclick="nextReport()"><i
+                            class="fas fa-chevron-right"></i></button>
+                </div>
+            </div>
+            <div id="sampleChipContainer" class="d-flex flex-wrap gap-2 mb-4">
+                {% for item in showcase.rotating_reports %}
+                <span class="sample-chip {{ 'active' if loop.first else '' }}" data-index="{{ loop.index0 }}"
+                    onclick="showReport(Number(this.dataset.index))">{{ item.sample_id }}</span>
+                {% endfor %}
+            </div>
+            <div class="mini-card mb-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="small fw-bold carousel-text" id="carouselSampleName">加载中...</div>
+                        <div class="small carousel-text" id="carouselSampleTime"></div>
+                    </div>
+                    <div class="text-end">
+                        <div class="fs-3 fw-bold text-success" id="carouselProbability">0%</div>
+                        <span class="badge" id="carouselLevel">优秀</span>
+                    </div>
+                </div>
+                <div class="mt-3 small carousel-text" id="carouselSummary">正在调取分析摘要...</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header"><i class="fas fa-compass-drafting me-2"></i> 全库样本均值特征雷达图</div>
+            <div class="card-body">
+                <canvas id="radarChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm"
+            style="background: linear-gradient(135deg, #ffffff 0%, #f0f4ff 100%);">
+            <div class="card-body text-center">
+                <h5>预测内核评测</h5>
+                <canvas id="modelScoreChart" height="180"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-header bg-white"><i class="fas fa-lightbulb me-2 text-warning"></i> 平台赋能科研路径</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-upload text-primary"></i> 实验入库</h6>
+                        <p class="small text-muted">支持单样本录入或批量同步。</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-gears text-success"></i> 特征工程</h6>
+                        <p class="small text-muted">自适应量纲统一与归一化。</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6><i class="fas fa-robot text-warning"></i> AI 优化</h6>
+                        <p class="small text-muted">联袂 SHAP 产出动态调参建议。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="dashboardData">{{ dashboard_json|safe }}</script>
+<script type="application/json" id="showcaseData">{{ showcase_json|safe }}</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const dashboard = JSON.parse(document.getElementById('dashboardData')?.textContent || '{}');
+        const showcase = JSON.parse(document.getElementById('showcaseData')?.textContent || '{}');
+        const rotatingReports = showcase.rotating_reports || [];
+        let currentReportIndex = 0;
+
+    new Chart(document.getElementById('trendChart'), {
+        type: 'line',
+        data: {
+            labels: dashboard.experiment_labels,
+            datasets: [
+                { label: '反应温度', data: dashboard.temperature_series, borderColor: '#ef476f', backgroundColor: 'rgba(239, 71, 111, 0.1)', tension: 0.35, fill: true },
+                { label: '催化剂率', data: dashboard.catalyst_series, borderColor: '#2ec4b6', backgroundColor: 'rgba(46, 196, 182, 0.08)', tension: 0.35, fill: true },
+                { label: 'pH值', data: dashboard.ph_series, borderColor: '#ffd166', backgroundColor: 'rgba(255, 209, 102, 0.10)', tension: 0.35, fill: true }
+            ]
+        },
+        options: { plugins: { legend: { position: 'bottom' } } }
+    });
+
+    new Chart(document.getElementById('radarChart'), {
+        type: 'radar',
+        data: {
+            labels: dashboard.radar.labels,
+            datasets: [{ label: '全库均值', data: dashboard.radar.values, backgroundColor: 'rgba(67, 97, 238, 0.2)', borderColor: '#4361ee' }]
+        }
+    });
+
+    new Chart(document.getElementById('hotspotChart'), {
+        type: 'bar',
+        data: {
+            labels: showcase.hotspot.labels,
+            datasets: [{ data: showcase.hotspot.values, backgroundColor: '#ef476f' }]
+        },
+        options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+    });
+
+    new Chart(document.getElementById('modelScoreChart'), {
+        type: 'bar',
+        data: {
+            labels: showcase.model_scores.labels,
+            datasets: [{ data: showcase.model_scores.values, backgroundColor: '#4361ee' }]
+        },
+        options: { plugins: { legend: { display: false } } }
+    });
+
+    new Chart(document.getElementById('probabilityTimelineChart'), {
+        type: 'line',
+        data: {
+            labels: (dashboard.probability_timeline || {}).labels || [],
+            datasets: [{
+                label: '成功率(%)',
+                data: (dashboard.probability_timeline || {}).values || [],
+                borderColor: '#4361ee',
+                backgroundColor: 'rgba(67, 97, 238, 0.12)',
+                tension: 0.35,
+                fill: true
+            }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } }
+    });
+
+    new Chart(document.getElementById('groupDistributionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: (dashboard.group_distribution || {}).labels || [],
+            datasets: [{
+                data: (dashboard.group_distribution || {}).values || [],
+                backgroundColor: ['#4361ee', '#2ec4b6', '#ef476f', '#ffd166', '#118ab2', '#06d6a0', '#8338ec']
+            }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } }, cutout: '65%' }
+    });
+
+    const groupCompare = dashboard.group_compare || {};
+    const groups = groupCompare.groups || [];
+
+    new Chart(document.getElementById('groupAvgSuccessChart'), {
+        type: 'bar',
+        data: {
+            labels: groups,
+            datasets: [{
+                label: '平均成功率(%)',
+                data: groupCompare.avg_success_rate || [],
+                backgroundColor: ['rgba(67, 97, 238, 0.7)', 'rgba(46, 196, 182, 0.7)']
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } }
+    });
+
+    new Chart(document.getElementById('groupExcellentRateChart'), {
+        type: 'bar',
+        data: {
+            labels: groups,
+            datasets: [{
+                label: '优秀率(%)',
+                data: groupCompare.excellent_rate || [],
+                backgroundColor: ['rgba(239, 71, 111, 0.6)', 'rgba(255, 209, 102, 0.85)']
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } }
+    });
+
+    const renderTopList = (hostId, items) => {
+        const host = document.getElementById(hostId);
+        if (!host) return;
+        host.innerHTML = '';
+        (items || []).slice(0, 3).forEach((item) => {
+            const li = document.createElement('li');
+            li.textContent = `${item.name}`;
+            host.appendChild(li);
+        });
+        if (!host.children.length) {
+            const li = document.createElement('li');
+            li.textContent = '暂无数据';
+            host.appendChild(li);
+        }
+    };
+    const topFeatures = groupCompare.top_features || {};
+    renderTopList('controlTopFeatures', topFeatures['对照组']);
+    renderTopList('optTopFeatures', topFeatures['优化组']);
+
+    // 显著性指标渲染
+    const sig = groupCompare.significance || {};
+    const avg = sig.avg_success_rate || {};
+    const exc = sig.excellent_rate || {};
+    const setText = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = (val === undefined || val === null) ? '--' : val;
+    };
+    const sign = (v) => (Number(v) >= 0 ? '+' : '');
+    setText('sigAvgDiff', sign(avg.diff) + (avg.diff ?? '--') + '%');
+    setText('sigAvgCiLow', avg.ci_low ?? '--');
+    setText('sigAvgCiHigh', avg.ci_high ?? '--');
+    setText('sigAvgNControl', avg.n_control ?? '--');
+    setText('sigAvgNOpt', avg.n_opt ?? '--');
+    setText('sigAvgP', avg.p_value ?? '--');
+
+    setText('sigExcDiff', sign(exc.diff) + (exc.diff ?? '--') + '%');
+    setText('sigExcCiLow', exc.ci_low ?? '--');
+    setText('sigExcCiHigh', exc.ci_high ?? '--');
+    setText('sigExcNControl', exc.n_control ?? '--');
+    setText('sigExcNOpt', exc.n_opt ?? '--');
+    setText('sigExcP', exc.p_value ?? '--');
+
+    const improvement = dashboard.improvement_story || {};
+    const sampleBadge = document.getElementById('improvementSampleId');
+    if (sampleBadge) sampleBadge.textContent = `样本：${improvement.sample_id || '-'}`;
+    new Chart(document.getElementById('improvementStoryChart'), {
+        type: 'line',
+        data: {
+            labels: improvement.labels || [],
+            datasets: [{
+                label: '成功率(%)',
+                data: improvement.values || [],
+                borderColor: '#2ec4b6',
+                backgroundColor: 'rgba(46, 196, 182, 0.12)',
+                tension: 0.35,
+                fill: true
+            }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } }, scales: { y: { suggestedMin: 0, suggestedMax: 100 } } }
+    });
+
+    const corr = dashboard.correlation || {};
+    const corrLabels = corr.labels || [];
+    const corrMatrix = corr.matrix || [];
+    const heatmapHost = document.getElementById('correlationHeatmap');
+    if (heatmapHost && corrLabels.length && corrMatrix.length) {
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+        const colorFor = (v) => {
+            const value = clamp(Number(v) || 0, -1, 1);
+            const intensity = Math.round(Math.abs(value) * 160);
+            if (value >= 0) {
+                return `rgb(${255}, ${255 - intensity}, ${255 - intensity})`;
+            }
+            return `rgb(${255 - intensity}, ${255 - intensity}, ${255})`;
+        };
+
+        let html = '<table class="table table-sm table-bordered align-middle text-center mb-0" style="min-width: 900px;">';
+        html += '<thead><tr><th style="width: 180px;">特征</th>';
+        for (const label of corrLabels) {
+            html += `<th class="small">${label}</th>`;
+        }
+        html += '</tr></thead><tbody>';
+        for (let i = 0; i < corrLabels.length; i++) {
+            html += `<tr><th class="text-start small">${corrLabels[i]}</th>`;
+            for (let j = 0; j < corrLabels.length; j++) {
+                const v = (corrMatrix[i] || [])[j] ?? 0;
+                html += `<td style="background:${colorFor(v)}; font-variant-numeric: tabular-nums;" class="small">${Number(v).toFixed(2)}</td>`;
+            }
+            html += '</tr>';
+        }
+        html += '</tbody></table>';
+        heatmapHost.innerHTML = html;
+    } else if (heatmapHost) {
+        heatmapHost.innerHTML = '<div class="text-muted small">暂无足够数据生成相关性热力图，请先初始化演示数据或导入更多样本。</div>';
+    }
+
+    new Chart(document.getElementById('resultDistributionChart'), {
+        type: 'doughnut',
+        data: {
+            labels: (dashboard.result_distribution || {}).labels || [],
+            datasets: [{
+                data: (dashboard.result_distribution || {}).values || [],
+                backgroundColor: ['#06d6a0', '#4361ee', '#ffd166']
+            }]
+        },
+        options: { plugins: { legend: { position: 'bottom' } }, cutout: '65%' }
+    });
+
+    window.renderReportCard = function (index) {
+        if (!rotatingReports.length) return;
+        currentReportIndex = (index + rotatingReports.length) % rotatingReports.length;
+        const report = rotatingReports[currentReportIndex];
+        document.getElementById('carouselSampleName').textContent = report.sample_id;
+        document.getElementById('carouselSampleTime').textContent = report.created_at;
+        document.getElementById('carouselProbability').textContent = report.probability + '%';
+        document.getElementById('carouselSummary').textContent = report.summary;
+        document.querySelectorAll('.sample-chip').forEach((chip, i) => chip.classList.toggle('active', i === currentReportIndex));
+    };
+
+    window.nextReport = () => renderReportCard(currentReportIndex + 1);
+    window.prevReport = () => renderReportCard(currentReportIndex - 1);
+    window.showReport = (index) => renderReportCard(index);
+    renderReportCard(0);
+    });
+</script>
+{% endblock %}

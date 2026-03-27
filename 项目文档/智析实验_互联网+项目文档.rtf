@@ -1,0 +1,124 @@
+{\rtf1\ansi\deff0
+{\fonttbl{\f0 Microsoft YaHei;}{\f1 SimSun;}}
+\fs24\f0
+\pard\qc\b\fs36 智析实验——基于SHAP值的化学实验条件归因优化平台\par
+\pard\qc\b\fs28 互联网+参赛项目文档（可直接用于申报/路演/PPT写稿）\par
+\pard\qc\b\fs24 版本：V2.0\par
+\pard\qc\fs24 更新日期：2026-03-14\par
+\pard\par
+\pard\b\fs28 0. 基本信息\par
+\pard\fs24 项目名称：智析实验——基于SHAP值的化学实验条件归因优化平台\par
+\pard\fs24 一句话定位：用可解释AI替代“盲目试错”，把实验优化从经验驱动升级为数据驱动 + 可解释决策。\par
+\pard\fs24 赛道建议：高教主赛道（新材料 / 绿色化工 + 人工智能方向），也可按学校要求归类到科研数字化/新质生产力方向。\par
+\pard\par
+\pard\b\fs28 1. 项目概述（摘要版）\par
+\pard\fs24 智析实验面向化学/材料/催化/工艺优化等实验场景，围绕“实验结果不稳定、优化效率低、关键因素难定位、经验难复用”的普遍痛点，构建了一个“预测 + 归因 + 建议 + 报告沉淀”的一体化平台。\par
+\pard\fs24 平台通过树模型（XGBoost/RandomForest/LightGBM）对结构化实验数据建模，并用SHAP（SHapley Additive exPlanations）将模型输出拆解为每个实验条件对结果的边际贡献，实现：\par
+\pard\fs24 1）实验条件归因：定量解释温度、pH、催化剂用量等变量对结果的正/负作用及贡献强度；\par
+\pard\fs24 2）关键因素排序：给出Top-N影响因子，辅助优先级决策；\par
+\pard\fs24 3）可操作建议：围绕贡献方向生成下一轮调参思路（如温度区间、用量增减方向）；\par
+\pard\fs24 4）报告与可视化：瀑布图、力导向图、摘要图、依赖图、ROC等多维图表与结构化报告输出。\par
+\pard\fs24 当前已完成可运行MVP：包含Web界面、样本管理、模型训练评估、SHAP局部/全局解释、可视化仪表盘、报告输出、REST API、权限认证与基础运维能力，可现场演示。\par
+\pard\par
+\pard\b\fs28 2. 背景与痛点（问题为什么重要）\par
+\pard\b\fs24 2.1 行业/科研共性问题\par
+\pard\fs24 化学与材料实验具有典型特征：变量多、强非线性与强交互、实验成本高、结果波动大。实验人员往往面临：同一体系换一组参数结果差很多；一轮失败后难快速判断哪个变量出了问题；即便找到较好结果也难清楚解释“为什么更好”。\par
+\pard\b\fs24 2.2 传统优化方式局限\par
+\pard\fs24 经验试错依赖个人直觉且不可复用；正交/响应面在高维复杂交互中收敛慢且解释与复盘仍困难；黑箱预测只能给出成功概率，无法回答“为什么”和“下一轮该先调哪个、往哪个方向调”。\par
+\pard\b\fs24 2.3 核心痛点一句话\par
+\pard\fs24 实验室不缺数据，缺的是把数据变成“解释”和“下一轮决策依据”的能力。\par
+\pard\par
+\pard\b\fs28 3. 项目目标（要把什么做成）\par
+\pard\fs24 目标1：可解释——让每次实验结果说得清楚：哪个条件在拉升结果、哪个在拖后腿、影响有多大。\par
+\pard\fs24 目标2：可执行——不止展示图表，还能输出下一轮调参建议框架，形成闭环。\par
+\pard\fs24 目标3：可沉淀——每次分析形成报告，积累为实验知识资产，支持复盘、教学与科研传承。\par
+\pard\fs24 目标4：低门槛——用Web平台封装机器学习与SHAP解释，降低算法使用门槛。\par
+\pard\par
+\pard\b\fs28 4. 解决方案与技术路线（我们怎么做）\par
+\pard\b\fs24 4.1 整体闭环\par
+\pard\fs24 上传/录入实验数据 → 数据清洗与特征处理 → 训练模型并评估 → 选择样本预测 → SHAP归因解释（局部+全局）→ 自动生成优化建议 → 报告存档与可视化展示\par
+\pard\b\fs24 4.2 关键技术点\par
+\pard\fs24 - 机器学习模型：XGBoost / RandomForest / LightGBM（适配结构化实验数据与非线性关系）\par
+\pard\fs24 - 可解释AI：SHAP（基于博弈论分配贡献，预测拆解到特征级别）\par
+\pard\fs24 - 评估体系：AUC、F1、Precision、Recall、Sensitivity、Specificity、PPV、NPV，并支持Youden’s J阈值优化\par
+\pard\fs24 - 可视化体系：瀑布图、力导向图、摘要图、依赖图、ROC、相关性热力图、仪表盘\par
+\pard\par
+\pard\b\fs28 5. 产品功能说明（按模块）\par
+\pard\b\fs24 5.1 实验样本管理\par
+\pard\fs24 支持样本录入与维护；CSV/Excel批量导入；历史追踪与分页浏览，便于复盘。\par
+\pard\b\fs24 5.2 模型训练与模型资产库\par
+\pard\fs24 支持XGBoost/RandomForest/LightGBM训练；自动清洗、编码、标准化、交叉验证与网格搜索调参；模型保存、加载、切换与激活；输出AUC/F1等指标，证明可用性与稳定性。\par
+\pard\b\fs24 5.3 SHAP归因分析（核心）\par
+\pard\fs24 支持个体样本解释与全局重要性解释；自动生成瀑布图、力导向图、摘要图、依赖图，明确贡献方向与强度，辅助“先调什么、怎么调”。\par
+\pard\b\fs24 5.4 智能优化建议与报告系统\par
+\pard\fs24 支持优秀/良好/待优化评级；Top特征贡献排序表；围绕关键因子的方向性建议；报告沉淀与查询展示，并支持结构化导出（JSON）用于二次分析或科研绘图。\par
+\pard\b\fs24 5.5 RESTful API（集成与扩展）\par
+\pard\fs24 已具备认证、数据上传、训练、预测、SHAP分析、报告、健康检查等接口能力，便于对接实验室数据系统/ELN/LIMS，或扩展为企业内网私有化部署服务。\par
+\pard\par
+\pard\b\fs28 6. 数据字段与示例（专业性与可落地）\par
+\pard\fs24 当前实验特征字段示例（可按课题组扩展）：reaction_temperature（反应温度）、reaction_time_min（反应时间）、ph_value（pH）、catalyst_loading（催化剂用量）、solvent_polarity（溶剂极性）、stirring_speed_rpm（搅拌转速）、reactant_ratio（配比）、crystallization_time_min（结晶时间）、target（是否达标：0/1）。\par
+\pard\fs24 配套示例数据：sample_data.csv（快速测试）、sample_data_large.csv（训练用）。\par
+\pard\par
+\pard\b\fs28 7. 创新点与核心竞争力（评审高分点）\par
+\pard\b\fs24 7.1 技术创新：从“能预测”到“能解释、能决策”\par
+\pard\fs24 - 创新点1：解释优先——不仅预测成功概率，还量化每个变量贡献，解决信任问题。\par
+\pard\fs24 - 创新点2：决策闭环——Top关键因子 + 方向性建议 + 报告沉淀，形成“分析—行动—复盘”闭环。\par
+\pard\fs24 - 创新点3：领域适配——以化学实验条件为中心设计数据结构、可视化与报告模板，避免通用平台“好看但不落地”。\par
+\pard\b\fs24 7.2 产品创新：低门槛、可演示、可迭代\par
+\pard\fs24 Web化交互降低使用门槛；可视化与报告表达强，适合比赛答辩展示；支持多模型与版本管理，为后续扩展留接口。\par
+\pard\b\fs24 7.3 竞争优势（可对外表述）\par
+\pard\fs24 更省钱：减少试错轮次与材料消耗；更省时：缩短优化周期、快速定位问题变量；更可控：结果可解释、可复盘；更可传承：把隐性经验变为显性资产。\par
+\pard\par
+\pard\b\fs28 8. 应用场景与落地路径\par
+\pard\fs24 - 高校实验室：研究生/导师进行反应条件或制备参数优化，形成案例与教学成果。\par
+\pard\fs24 - 科研院所：项目组多批次实验复盘与关键因素定位，支撑阶段性决策。\par
+\pard\fs24 - 企业研发（中后期）：工艺参数优化与质量稳定性提升，强调私有化部署与数据安全。\par
+\pard\fs24 - 教学场景：作为“实验数据分析与可解释AI”实践平台与课程项目。\par
+\pard\par
+\pard\b\fs28 9. 商业模式（真实可行口径）\par
+\pard\fs24 模式1：SaaS订阅（高校/科研）——按实验室/课题组订阅，按用户数、数据量或模块计费。\par
+\pard\fs24 模式2：私有化部署（企业/院所）——一次性部署费 + 年运维服务费，数据不出内网。\par
+\pard\fs24 模式3：定制与服务——数据清洗、模型适配、规则库定制、培训与咨询。\par
+\pard\par
+\pard\b\fs28 10. 推广与运营策略\par
+\pard\fs24 以案例驱动而非广告驱动：导师/实验室资源导入 → 校内外竞赛与成果展 → 试点课题组 → 教学合作与科研团队扩散 → 企业合作落地。\par
+\pard\par
+\pard\b\fs28 11. 可行性论证\par
+\pard\b\fs24 11.1 技术可行性\par
+\pard\fs24 树模型与SHAP在结构化数据解释上成熟可靠；系统已完成MVP，覆盖训练、分析、可视化、报告、API与认证。\par
+\pard\b\fs24 11.2 产品可行性\par
+\pard\fs24 流程清晰：上传数据→训练→激活→选样本→分析→报告；结果可解释、可截图、可导出，满足科研与比赛双需求。\par
+\pard\b\fs24 11.3 团队可行性（模板）\par
+\pard\fs24 化学/材料成员负责场景定义与建议验证；计算机成员负责算法工程化、平台开发与部署；导师提供真实场景资源、方向把关与试点入口。\par
+\pard\par
+\pard\b\fs28 12. 风险分析与应对\par
+\pard\fs24 风险1：数据量不足导致模型不稳定——应对：先从中小样本可建模场景切入，持续积累数据，增强数据清洗与特征工程。\par
+\pard\fs24 风险2：用户不信任AI建议——应对：强调可解释性证据链（贡献方向+图表），用案例建立可信度。\par
+\pard\fs24 风险3：企业落地门槛高（安全/采购）——应对：先高校试点积累案例，再私有化部署推进。\par
+\pard\fs24 风险4：技术迭代快可能被通用平台替代——应对：深耕垂直场景，强化规则库与实验知识沉淀，积累数据与案例壁垒。\par
+\pard\par
+\pard\b\fs28 13. 里程碑规划（时间表）\par
+\pard\fs24 0-3个月（验证期）：试点实验室上线，形成首批案例；打磨报告模板与演示链路。\par
+\pard\fs24 3-6个月（打磨期）：扩充规则库，接入更多真实数据；优化交互与展示；完善异常处理与测试。\par
+\pard\fs24 6-12个月（推广期）：形成稳定试点用户群；探索订阅收费与教学合作。\par
+\pard\fs24 1-2年（扩张期）：SaaS与私有化双线；扩展至更多实验领域（电化学、材料合成、药物合成等）。\par
+\pard\par
+\pard\b\fs28 14. 技术架构说明（给技术评委）\par
+\pard\fs24 后端：Flask 2.x + Flask-SQLAlchemy + Flask-Login + Flask-CORS\par
+\pard\fs24 算法：scikit-learn + XGBoost/LightGBM + SHAP\par
+\pard\fs24 数据处理：Pandas / NumPy\par
+\pard\fs24 可视化：Matplotlib/Seaborn（后端图像生成）+ Bootstrap/Chart.js（前端展示）\par
+\pard\fs24 数据库：SQLite（开发/演示）/ MySQL（生产）\par
+\pard\fs24 部署：Docker + Docker Compose（可扩展Gunicorn）\par
+\pard\fs24 接口：REST API（认证、数据、训练、预测、分析、报告、健康检查）\par
+\pard\par
+\pard\b\fs28 15. 可展示成果清单（答辩必备）\par
+\pard\fs24 - 系统可运行：登录、样本管理、训练、分析、报告闭环演示\par
+\pard\fs24 - 示例数据与模型：可直接生成SHAP图与建议\par
+\pard\fs24 - 截图页：瀑布图/力导向图/summary图/仪表盘/报告页\par
+\pard\fs24 - 接口文档：体现工程规范与可集成性\par
+\pard\fs24 - 可扩展性：多模型训练、模型激活、报告导出、Docker部署\par
+\pard\par
+\pard\b\fs28 附：需要补充的信息（用于完善比赛版/真实版）\par
+\pard\fs24 1）参赛组别/赛道；2）具体课题方向关键词；3）1-2个真实案例（优化前后对比指标）；4）团队构成与导师资源；5）主打亮点（效率/绿色/教学）；6）是否已接入LLM建议（已接入/规划接入）。\par
+}

@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}批量对比{% endblock %}
+
+{% block extra_css %}
+<style>
+.compare-hero {
+    background: linear-gradient(135deg, #1d3557 0%, #4361ee 55%, #2ec4b6 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+}
+.sample-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(67, 97, 238, 0.25);
+    background: rgba(67, 97, 238, 0.06);
+    cursor: pointer;
+    user-select: none;
+}
+.sample-pill input { margin: 0; }
+.table thead th { white-space: nowrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="compare-hero">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <h2 class="mb-1"><i class="fas fa-people-arrows me-2"></i>批量样本横向对比</h2>
+                <div class="opacity-75">同时选择多个样本，对比成功率、分组、轮次与Top因子</div>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-light" href="/case-study"><i class="fas fa-microscope me-1"></i>案例对比</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-list-check me-2"></i>选择样本</span>
+                    <button class="btn btn-sm btn-outline-light" id="selectTop4Btn">Top4</button>
+                </div>
+                <div class="card-body">
+                    <div class="small text-muted mb-3">建议选择 3-8 个样本进行对比展示。</div>
+                    <div class="d-flex flex-wrap gap-2" style="max-height: 420px; overflow-y: auto;">
+                        {% for s in samples %}
+                        <label class="sample-pill">
+                            <input type="checkbox" class="form-check-input sample-check" value="{{ s.id }}" {% if s.id in default_ids %}checked{% endif %}>
+                            <span class="fw-bold">{{ s.sample_id }}</span>
+                            <span class="text-muted small">{{ s.experiment_group }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="d-grid mt-3">
+                        <button class="btn btn-primary" id="compareBtn"><i class="fas fa-play me-2"></i>生成对比</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header"><i class="fas fa-chart-column me-2"></i>成功率对比</div>
+                <div class="card-body">
+                    <canvas id="compareChart" height="140"></canvas>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-table me-2"></i>对比明细</span>
+                    <span class="badge bg-light text-dark" id="selectedCount">0 个样本</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>样本</th>
+                                    <th>分组</th>
+                                    <th>轮次</th>
+                                    <th>成功率(%)</th>
+                                    <th>Top1 因子</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="compareTableBody">
+                                <tr><td colspan="6" class="text-muted text-center py-4">点击“生成对比”开始</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const btn = document.getElementById('compareBtn');
+        const top4Btn = document.getElementById('selectTop4Btn');
+        const checks = Array.from(document.querySelectorAll('.sample-check'))
+        const tbody = document.getElementById('compareTableBody');
+        const countLabel = document.getElementById('selectedCount');
+        let chart = null;
+
+        function getSelectedIds() {
+            return checks.filter(c => c.checked).map(c => Number(c.value));
+        }
+
+        function updateCount() {
+            const n = getSelectedIds().length;
+            if (countLabel) countLabel.textContent = `${n} 个样本`;
+        }
+
+        checks.forEach(c => c.addEventListener('change', updateCount));
+        updateCount();
+
+        if (top4Btn) {
+            top4Btn.addEventListener('click', function () {
+                checks.forEach((c, idx) => c.checked = idx < 4);
+                updateCount();
+            });
+        }
+
+        function renderTable(rows) {
+            tbody.innerHTML = '';
+            (rows || []).forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="fw-bold">${r.sample_id}</td>
+                    <td><span class="badge bg-light text-dark">${r.group || '-'}</span></td>
+                    <td>${r.round ?? '-'}</td>
+                    <td><span class="fw-bold ${r.probability >= 75 ? 'text-success' : r.probability >= 50 ? 'text-warning' : 'text-danger'}">${r.probability}</span></td>
+                    <td class="small">${r.top1_feature || '-'}</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary" href="/samples/${r.id}">详情</a>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            if (!tbody.children.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">暂无结果</td></tr>';
+            }
+        }
+
+        function renderChart(chartData) {
+            const ctx = document.getElementById('compareChart');
+            if (!ctx) return;
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: (chartData || {}).labels || [],
+                    datasets: [{
+                        label: '成功率(%)',
+                        data: (chartData || {}).values || [],
+                        backgroundColor: 'rgba(67, 97, 238, 0.75)'
+                    }]
+                },
+                options: {
+                    plugins: { legend: { display: false } },
+                    scales: { y: { suggestedMin: 0, suggestedMax: 100 } }
+                }
+            });
+        }
+
+        btn.addEventListener('click', function () {
+            const ids = getSelectedIds();
+            if (!ids.length) {
+                alert('请至少选择 1 个样本');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>生成中...';
+            fetch('/api/batch-compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sample_ids: ids })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert(data.error || '生成失败');
+                        return;
+                    }
+                    renderTable(data.rows);
+                    renderChart(data.chart);
+                })
+                .catch(e => alert('请求失败: ' + e.message))
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-play me-2"></i>生成对比';
+                });
+        });
+
+        // 首次自动生成
+        btn.click();
+    });
+</script>
+{% endblock %}

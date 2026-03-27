@@ -1,0 +1,308 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>答辩截图页 - 实验报告 {{ report.id }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --sh-primary: #1e3a8a;
+            --sh-secondary: #0d9488;
+            --sh-accent: #f59e0b;
+            --sh-dark: #0f172a;
+            --sh-light: #f8fafc;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: var(--sh-dark);
+            font-family: 'Outfit', 'Inter', 'PingFang SC', sans-serif;
+            padding: 40px;
+            -webkit-print-color-adjust: exact;
+        }
+
+        .toolbar {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+        }
+
+        .snapshot-shell {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 32px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 40px 100px rgba(15, 23, 42, 0.15);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* Certificate-like header border */
+        .snapshot-shell::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 12px;
+            background: linear-gradient(90deg, var(--sh-primary), var(--sh-secondary));
+            z-index: 10;
+        }
+
+        .snapshot-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            padding: 60px 50px;
+            position: relative;
+        }
+
+        .snapshot-hero::after {
+            content: 'ChemSHAP INSIGHT';
+            position: absolute;
+            bottom: -20px;
+            right: 40px;
+            font-size: 8rem;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.03);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .score-box {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 28px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .result-big {
+            font-size: 5rem;
+            font-weight: 900;
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+            margin-bottom: 10px;
+        }
+
+        .info-panel {
+            background: var(--sh-light);
+            border-radius: 24px;
+            padding: 30px;
+            height: 100%;
+            border: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        .section-header {
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .metric-item:last-child {
+            border-bottom: none;
+        }
+
+        .tag-pill {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 6px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .shap-bar-container {
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 999px;
+            overflow: hidden;
+            width: 100px;
+        }
+
+        .advice-box {
+            background: #fffbeb;
+            border-left: 6px solid #f59e0b;
+            border-radius: 12px;
+            padding: 25px;
+            height: 100%;
+        }
+
+        @media print {
+            body {
+                padding: 0;
+                background-color: white;
+            }
+
+            .toolbar {
+                display: none !important;
+            }
+
+            .snapshot-shell {
+                box-shadow: none;
+                border: none;
+                border-radius: 0;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toolbar d-flex flex-wrap gap-2 justify-content-end">
+        <a href="{{ url_for('web.report_detail', report_id=report.id) }}" class="btn btn-outline-secondary"><i
+                class="fas fa-arrow-left"></i> 返回报告详情</a>
+        <button class="btn btn-warning" onclick="window.print()"><i class="fas fa-print"></i> 导出答辩高清 PDF</button>
+    </div>
+
+    <div class="snapshot-shell">
+        <div class="snapshot-hero">
+            <div class="row align-items-center g-5">
+                <div class="col-lg-7">
+                    <div class="d-flex align-items-center gap-3 mb-4">
+                        <div class="bg-primary rounded-circle p-2 px-3 text-white fw-bold">ChemSHAP</div>
+                        <div class="text-white-50 small tracking-widest text-uppercase">Experimental Attribution Insight
+                            v3.2</div>
+                    </div>
+                    <h1 class="display-4 fw-bold mb-3">实验样本归因分析报告</h1>
+                    <p class="lead text-white-50 mb-4">
+                        基于博弈论 SHAP 归因引擎，对该样本的 {{ snapshot.record_features|length }} 项实验条件进行深度非线性解构，识别核心成功驱动因子。
+                    </p>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="tag-pill"><i class="fas fa-fingerprint text-success me-2"></i> ID: #{{ report.id }}
+                        </div>
+                        <div class="tag-pill"><i class="fas fa-vial text-info me-2"></i> Sample: {{
+                            report.sample.sample_id }}</div>
+                        <div class="tag-pill"><i class="fas fa-calendar-check text-warning me-2"></i> Date: {{
+                            report.created_at.strftime('%Y-%m-%d') }}</div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="score-box">
+                        <div class="text-white-50 small mb-2 text-uppercase tracking-wider">Predictive Success Score
+                        </div>
+                        <div class="result-big">{{ '%.0f'|format((report.success_probability or 0) * 100) }}%</div>
+                        <div class="badge bg-{{ snapshot.level.badge }} fs-6 px-4 py-2 rounded-pill shadow-lg">
+                            {{ snapshot.level.label }} · {{ '合格' if report.success_probability >= 0.5 else '待优化' }}
+                        </div>
+                        <p class="mt-4 small text-white-50 px-3">{{ snapshot.level.description }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-5">
+            <div class="row g-5">
+                <div class="col-lg-4">
+                    <div class="info-panel">
+                        <div class="section-header"><i class="fas fa-list-ul text-primary"></i> 实验条件工况记录</div>
+                        {% for item in snapshot.record_features %}
+                        <div class="metric-item">
+                            <span class="text-muted">{{ item.label }}</span>
+                            <span class="fw-bold">{{ item.value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="row g-4 h-100">
+                        <div class="col-12">
+                            <div class="info-panel" style="background: white;">
+                                <div class="section-header"><i class="fas fa-magnifying-glass-chart text-success"></i>
+                                    SHAP 特征贡献解构 (Top 5 Ranking)</div>
+                                <div class="table-responsive">
+                                    <table class="table table-borderless align-middle mt-2">
+                                        <thead>
+                                            <tr class="text-muted small border-bottom">
+                                                <th>特征维度</th>
+                                                <th>观测数值</th>
+                                                <th>SHAP 贡献强度</th>
+                                                <th class="text-end">判定语义</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in (report.top_features or [])[:5] %}
+                                            <tr class="border-bottom-custom" style="border-bottom: 1px solid #f1f5f9;">
+                                                <td class="py-3 fw-bold text-dark">{{ item.display_name or item.feature
+                                                    }}</td>
+                                                <td><code
+                                                        class="bg-light px-2 py-1 text-dark">{{ item.formatted_value or item.value }}</code>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <div class="shap-bar-container">
+                                                            {% set abs_c = item.contribution|abs %}
+                                                            {% set width = (abs_c / 0.5 * 100)|round|int if abs_c < 0.5
+                                                                else 100 %} <div
+                                                                class="h-100 bg-{{ 'success' if item.contribution > 0 else 'warning' }}"
+                                                                style="width: {{ width }}%">
+                                                        </div>
+                                                    </div>
+                                                    <span class="small font-monospace fw-bold">{{
+                                                        '%.4f'|format(item.contribution) }}</span>
+                                </div>
+                                </td>
+                                <td class="text-end">
+                                    <span
+                                        class="badge bg-{{ 'success' if item.contribution > 0 else 'warning' }} {{ 'text-dark' if item.contribution < 0 else '' }} rounded-pill px-3">
+                                        {{ '正向支撑' if item.contribution > 0 else '需优因子' }}
+                                    </span>
+                                </td>
+                                </tr>
+                                {% endfor %}
+                                </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="advice-box">
+                            <div class="section-header" style="color: #92400e;"><i
+                                    class="fas fa-robot text-warning"></i> AI 智能化实验改良建议 (Powered by DeepSeek)</div>
+                            <p class="mb-0 fw-bold lead" style="color: #92400e; line-height: 1.6; font-size: 1.1rem;">
+                                {{ snapshot.optimization_text or report.expert_advice|safe }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-5 border-top d-flex justify-content-between align-items-end text-muted small">
+            <div>
+                <div class="fw-bold mb-1">智析实验 - 化学实验多维条件优化归因系统</div>
+                <div>Digital Attribution Engine for Chemical Optimization · Stable Version 3.2</div>
+            </div>
+            <div class="text-end">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data={{ request.url }}" alt="QR Code"
+                    class="mb-2 opacity-50">
+                <div class="opacity-50">系统验证报告 · 电子存证 UID: {{ report.id }}</div>
+            </div>
+        </div>
+    </div>
+    </div>
+</body>
+
+</html>

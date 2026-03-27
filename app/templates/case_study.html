@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}案例对比 - {{ sample.sample_id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.case-hero {
+    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    color: white;
+    padding: 2.5rem 0;
+    margin-bottom: 2rem;
+}
+.round-card {
+    border-left: 4px solid #4361ee;
+    background: #fff;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.round-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(67, 97, 238, 0.15);
+}
+.round-card.positive { border-left-color: #2ec4b6; }
+.round-card.negative { border-left-color: #ef476f; }
+.improvement-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-weight: 600;
+}
+.improvement-badge.up {
+    background: rgba(46, 196, 182, 0.15);
+    color: #2ec4b6;
+}
+.improvement-badge.down {
+    background: rgba(239, 71, 111, 0.15);
+    color: #ef476f;
+}
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+.feature-badge {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.feature-badge.positive {
+    background: rgba(46, 196, 182, 0.2);
+    color: #2ec4b6;
+}
+.feature-badge.negative {
+    background: rgba(239, 71, 111, 0.2);
+    color: #ef476f;
+}
+.before-after-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border: 1px solid #e0e7ff;
+}
+.story-timeline {
+    position: relative;
+    padding-left: 2rem;
+}
+.story-timeline::before {
+    content: '';
+    position: absolute;
+    left: 0.5rem;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, #4361ee 0%, #2ec4b6 100%);
+}
+.timeline-dot {
+    position: absolute;
+    left: 0;
+    width: 1rem;
+    height: 1rem;
+    background: #4361ee;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px #4361ee;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="case-hero">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="mb-3"><i class="fas fa-microscope me-2"></i>案例对比分析</h1>
+                <p class="mb-2 opacity-75">样本编号：<strong>{{ sample.sample_id }}</strong></p>
+                <p class="mb-2 opacity-75">实验分组：<strong>{{ get_group_label(sample.experiment_group) }}</strong> | 实验轮次：<strong>{{ sample.experiment_round }}</strong></p>
+                <p class="mb-0 opacity-75">总优化轮数：<strong class="fs-4">{{ round_count }}轮</strong></p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <div class="d-flex justify-content-end align-items-center gap-2 flex-wrap">
+                    <a href="/case-study/pdf" class="btn btn-light btn-sm"><i class="fas fa-file-pdf"></i> 导出PDF</a>
+                    <div class="improvement-badge {{ 'up' if before_after.improvement > 0 else 'down' }}">
+                        <i class="fas fa-arrow-{{ 'up' if before_after.improvement > 0 else 'down' }}"></i>
+                        <span>成功率提升 {{ before_after.improvement }}%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <!-- 前后对比卡片 -->
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="card before-after-card h-100">
+                <div class="card-header bg-white">
+                    <span class="badge bg-secondary">初始状态</span>
+                    <span class="ms-2 text-muted">第1轮</span>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="display-4 fw-bold text-muted">{{ before_after.first_probability }}%</div>
+                        <div class="small text-muted">初始成功率</div>
+                    </div>
+                    <hr>
+                    <div class="small fw-bold mb-2">关键影响因子（Top3）</div>
+                    {% for feat in before_after.first_top3 %}
+                    <div class="feature-item">
+                        <div class="feature-badge {{ 'positive' if feat.contribution > 0 else 'negative' }}">
+                            {{ loop.index }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="small fw-bold">{{ feat.name }}</div>
+                            <div class="small text-muted">贡献值: {{ "%.3f"|format(feat.contribution) }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card before-after-card h-100 border-success">
+                <div class="card-header bg-white">
+                    <span class="badge bg-success">优化后</span>
+                    <span class="ms-2 text-muted">第{{ round_count }}轮</span>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <div class="display-4 fw-bold text-success">{{ before_after.last_probability }}%</div>
+                        <div class="small text-muted">最终成功率</div>
+                    </div>
+                    <hr>
+                    <div class="small fw-bold mb-2">关键影响因子（Top3）</div>
+                    {% for feat in before_after.last_top3 %}
+                    <div class="feature-item">
+                        <div class="feature-badge {{ 'positive' if feat.contribution > 0 else 'negative' }}">
+                            {{ loop.index }}
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="small fw-bold">{{ feat.name }}</div>
+                            <div class="small text-muted">贡献值: {{ "%.3f"|format(feat.contribution) }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成功率提升曲线 -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-chart-line me-2"></i>成功率提升曲线</span>
+                    <span class="badge bg-primary">{{ round_count }}轮实验</span>
+                </div>
+                <div class="card-body">
+                    <canvas id="caseTimelineChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 因子变化追踪 -->
+    {% if top_changed_features %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <i class="fas fa-exchange-alt me-2"></i>关键因子变化追踪
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        {% for feat in top_changed_features %}
+                        <div class="col-md-4">
+                            <div class="p-3 rounded bg-light h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold">{{ feat.name }}</span>
+                                    <span class="badge {{ 'bg-success' if feat.change > 0 else 'bg-danger' }}">
+                                        {{ '+' if feat.change > 0 }}{{ feat.change }}
+                                    </span>
+                                </div>
+                                <div class="small text-muted mb-2">贡献值变化</div>
+                                <div class="d-flex justify-content-between small">
+                                    <span>初始: {{ "%.3f"|format(feat.first_contribution) }}</span>
+                                    <span>最终: {{ "%.3f"|format(feat.last_contribution) }}</span>
+                                </div>
+                                <div class="progress mt-2 progress-evolution" style="height: 6px;" data-width="{{ ((feat.change|abs) * 100) | round | int if ((feat.change|abs) * 100) < 100 else 100 }}" data-positive="{{ 'true' if feat.change > 0 else 'false' }}">
+                                    <div class="progress-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 轮次详细记录（时间线） -->
+    <div class="row">
+        <div class="col-12">
+            <h4 class="mb-4"><i class="fas fa-history me-2"></i>实验轮次详细记录</h4>
+            <div class="story-timeline">
+                {% for round_data in round_timeline %}
+                <div class="position-relative mb-4 ps-4">
+                    <div class="timeline-dot" style="top: 0.5rem;"></div>
+                    <div class="card round-card {{ 'positive' if round_data.probability >= 75 else 'negative' if round_data.probability < 50 else '' }}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <div>
+                                    <span class="badge bg-primary me-2">{{ round_data.round_label }}</span>
+                                    <span class="text-muted small">{{ round_data.created_at }}</span>
+                                </div>
+                                <div class="text-end">
+                                    <span class="fs-4 fw-bold {{ 'text-success' if round_data.probability >= 75 else 'text-warning' if round_data.probability >= 50 else 'text-danger' }}">
+                                        {{ round_data.probability }}%
+                                    </span>
+                                    <div class="small text-muted">成功率</div>
+                                </div>
+                            </div>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="small fw-bold mb-2">Top 3 影响因子</div>
+                                    {% for feat in round_data.top3_features %}
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="badge {{ 'bg-success' if feat.impact == 'positive' else 'bg-danger' }}" style="font-size: 0.6rem;">
+                                            {{ '+' if feat.impact == 'positive' else '-' }}
+                                        </span>
+                                        <span class="small">{{ feat.name }}</span>
+                                        <span class="small text-muted">({{ feat.value }})</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="small fw-bold mb-2">系统建议</div>
+                                    <div class="small text-muted" style="white-space: pre-line; max-height: 100px; overflow-y: auto;">
+                                        {{ round_data.advice[:200] }}{% if round_data.advice|length > 200 %}...{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="timelineData">{{ timeline_json|safe }}</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const timeline = JSON.parse(document.getElementById('timelineData').textContent || '{}');
+        
+        // 动态设置因子变化进度条
+        document.querySelectorAll('.progress-evolution').forEach(function(bar) {
+            const width = bar.dataset.width;
+            const isPositive = bar.dataset.positive === 'true';
+            const inner = bar.querySelector('.progress-bar');
+            if (inner && width) {
+                inner.style.width = width + '%';
+                inner.classList.add(isPositive ? 'bg-success' : 'bg-danger');
+            }
+        });
+        
+        new Chart(document.getElementById('caseTimelineChart'), {
+            type: 'line',
+            data: {
+                labels: timeline.labels || [],
+                datasets: [{
+                    label: '成功率(%)',
+                    data: timeline.values || [],
+                    borderColor: '#4361ee',
+                    backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    pointRadius: 6,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#4361ee',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return '成功率: ' + context.parsed.y + '%';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        suggestedMin: 0,
+                        suggestedMax: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

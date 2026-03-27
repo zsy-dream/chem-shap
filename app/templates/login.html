@@ -1,0 +1,266 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 智析实验 SHAP 归因平台</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #2ec4b6;
+            --dark-bg: #080b12;
+            --glass: rgba(255, 255, 255, 0.04);
+            --glass-border: rgba(255, 255, 255, 0.08);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(67, 97, 238, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(46, 196, 182, 0.12) 0%, transparent 40%);
+            color: #fff;
+            font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .login-wrap {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 480px;
+            padding: 20px;
+        }
+
+        .glass-login-card {
+            background: rgba(14, 20, 33, 0.8);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 32px;
+            padding: 3.5rem 3rem;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .glass-login-card::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(135deg, var(--primary), transparent, var(--secondary));
+            border-radius: 34px;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .brand-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 15px 30px rgba(67, 97, 238, 0.3);
+        }
+
+        .brand-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .brand-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            line-height: 1.6;
+        }
+
+        .brand-subtitle small {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.8rem;
+        }
+
+        .team-info-box {
+            background: rgba(67, 97, 238, 0.08);
+            border: 1px solid rgba(67, 97, 238, 0.15);
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .team-badge {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.7);
+            white-space: nowrap;
+        }
+
+        .form-floating>.form-control {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 16px;
+        }
+
+        .form-floating>.form-control:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(67, 97, 238, 0.15);
+        }
+
+        .form-floating>label {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .btn-premium-login {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: 16px;
+            padding: 14px;
+            font-weight: 700;
+            color: white;
+            width: 100%;
+            margin-top: 1rem;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-premium-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(67, 97, 238, 0.3);
+            filter: brightness(1.1);
+        }
+
+        .demo-credential-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1.2rem;
+            margin-top: 2rem;
+            font-size: 0.85rem;
+        }
+
+        /* Floating decoration circles */
+        .decor-circle {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="decor-circle"
+        style="width: 400px; height: 400px; background: rgba(67, 97, 238, 0.1); top: -100px; left: -100px;"></div>
+    <div class="decor-circle"
+        style="width: 300px; height: 300px; background: rgba(46, 196, 182, 0.05); bottom: -50px; right: -50px;"></div>
+
+    <div class="login-wrap">
+        <div class="glass-login-card">
+            <div class="brand-logo text-white">
+                <i class="fas fa-microscope"></i>
+            </div>
+            <h1 class="brand-title">智析实验</h1>
+            <p class="brand-subtitle">基于SHAP的可解释AI科研归因分析系统<br><small>单样本归因 · AI决策 · 实验优化</small></p>
+
+            <div class="team-info-box">
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <span class="team-badge"><i class="fas fa-university me-1"></i> 河南师范大学</span>
+                    <span class="team-badge"><i class="fas fa-users me-1"></i> PIONEER工作室</span>
+                    <span class="team-badge"><i class="fas fa-trophy me-1"></i> 互联网+创新大赛</span>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show border-0 rounded-4 mb-4 small"
+                role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('web.login') }}">
+                <div class="form-floating mb-3">
+                    <input type="text" class="form-control" name="username" id="floatingUser" placeholder="admin"
+                        value="admin" required>
+                    <label for="floatingUser"><i class="fas fa-user-shield me-2"></i> 管理员账号</label>
+                </div>
+                <div class="form-floating mb-4">
+                    <input type="password" class="form-control" name="password" id="floatingPass" placeholder="password"
+                        value="admin123" required>
+                    <label for="floatingPass"><i class="fas fa-key me-2"></i> 安全密码</label>
+                </div>
+                <button type="submit" class="btn btn-premium-login">
+                    <i class="fas fa-rocket me-2"></i> 进入归因系统
+                </button>
+                <button type="button" class="btn btn-outline-light w-100 mt-2 rounded-4" onclick="demoLogin()">
+                    <i class="fas fa-flask me-2"></i> 演示账号直接进入
+                </button>
+                <div class="text-center mt-3 small" style="color: rgba(255, 255, 255, 0.55);">
+                    登录后可进入首页、归因分析、案例对比与论文版 PDF 导出功能。
+                </div>
+            </form>
+
+            <div class="demo-credential-box">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-white-50"><i class="fas fa-info-circle me-1"></i> 演示权限已开放</span>
+                    <span class="badge bg-primary rounded-pill">V3.2 Stable</span>
+                </div>
+                <div class="d-flex gap-4">
+                    <div><span class="text-white-50">账号:</span> <code>admin</code></div>
+                    <div><span class="text-white-50">密码:</span> <code>admin123</code></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4 text-white-50 small">
+            &copy; 2026 智析实验科研组 · 技术支持 Huawei Cloud ModelArts
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function demoLogin() {
+            try {
+                const response = await fetch('/api/auth/demo', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    window.location.href = '/';
+                } else {
+                    alert(data.error || '演示登录失败');
+                }
+            } catch (e) {
+                alert('演示登录失败: ' + e.message);
+            }
+        }
+    </script>
+</body>
+
+</html>
