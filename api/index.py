@@ -28,7 +28,7 @@ class MockMLModule:
 heavy_modules = [
     'numpy', 'pandas', 'xgboost', 'lightgbm', 'shap', 'sklearn', 
     'sklearn.model_selection', 'sklearn.metrics', 'matplotlib', 
-    'matplotlib.pyplot', 'seaborn', 'reportlab', 'scipy'
+    'matplotlib.pyplot', 'seaborn', 'reportlab', 'scipy', 'joblib'
 ]
 for mod in heavy_modules:
     sys.modules[mod] = MockMLModule()
@@ -36,9 +36,19 @@ for mod in heavy_modules:
 # 强制Vercel环境将数据库放在读写目录 /tmp
 os.environ['DATABASE_URL'] = 'sqlite:////tmp/shap_medical_demo.db'
 
-from app import create_app
+import traceback
 
-app = create_app()
+try:
+    from app import create_app
+    app = create_app()
+except Exception as e:
+    from flask import Flask
+    app = Flask(__name__)
+    err = traceback.format_exc()
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def catch_all(path):
+        return f"<h1>Startup Error</h1><pre>{err}</pre>", 500
 
 # Vercel Serverless Handler
 def handler(event, context):
