@@ -11,7 +11,9 @@ from sklearn.model_selection import GridSearchCV
 class ModelService:
     def __init__(self, model_folder='models'):
         self.model_folder = model_folder
-        os.makedirs(model_folder, exist_ok=True)
+        # Vercel 只读文件系统，跳过目录创建
+        if not os.environ.get('VERCEL'):
+            os.makedirs(model_folder, exist_ok=True)
         self.model = None
 
     def train_xgboost(self, X_train, y_train, params=None):

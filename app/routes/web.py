@@ -821,7 +821,8 @@ def train_model_web():
             return redirect(url_for('web.models'))
 
         upload_folder = 'uploads'
-        os.makedirs(upload_folder, exist_ok=True)
+        if not os.environ.get('VERCEL'):
+            os.makedirs(upload_folder, exist_ok=True)
         filepath = os.path.join(upload_folder, file.filename)
         file.save(filepath)
 
@@ -892,7 +893,8 @@ def upload_record_web(sample_id):
             return redirect(url_for('web.sample_detail', sample_id=sample_id))
 
         upload_folder = 'uploads'
-        os.makedirs(upload_folder, exist_ok=True)
+        if not os.environ.get('VERCEL'):
+            os.makedirs(upload_folder, exist_ok=True)
         filepath = os.path.join(upload_folder, file.filename)
         file.save(filepath)
 

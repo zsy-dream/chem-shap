@@ -35,9 +35,10 @@ def upload_data():
     if file_ext not in ['csv', 'xlsx', 'xls']:
         return jsonify({'error': '不支持的文件格式，仅支持CSV和Excel文件'}), 400
     
-    # 确保上传目录存在
+    # 确保上传目录存在（Vercel 跳过）
     upload_folder = current_app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_folder, exist_ok=True)
+    if not os.environ.get('VERCEL'):
+        os.makedirs(upload_folder, exist_ok=True)
     
     # 保存文件
     filepath = os.path.join(upload_folder, filename)
