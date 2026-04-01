@@ -7,6 +7,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 设置环境变量
 os.environ.setdefault('FLASK_ENV', 'production')
 
+from unittest.mock import MagicMock
+
+class MockMLModule(MagicMock):
+    @classmethod
+    def __getattr__(cls, name):
+        return MagicMock()
+
+# 针对Vercel演示环境的依赖阉割（防止体积超250MB导致崩溃）
+heavy_modules = [
+    'numpy', 'pandas', 'xgboost', 'lightgbm', 'shap', 'sklearn', 
+    'sklearn.model_selection', 'sklearn.metrics', 'matplotlib', 
+    'matplotlib.pyplot', 'seaborn', 'reportlab', 'scipy'
+]
+for mod in heavy_modules:
+    sys.modules[mod] = MockMLModule()
+
 from app import create_app
 
 app = create_app()

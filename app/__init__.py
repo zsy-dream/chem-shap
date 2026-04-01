@@ -1,4 +1,4 @@
-﻿import matplotlib
+import matplotlib
 matplotlib.use('Agg')
 
 from flask import Flask
@@ -45,8 +45,8 @@ def create_app(config_class=Config):
     from app.cli import register_commands
     register_commands(app)
     
-    # 初始化演示数据
-    init_demo_data(app)
+    # 初化演示数据
+    # init_demo_data(app)
     
     return app
 
