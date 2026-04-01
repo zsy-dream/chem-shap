@@ -21,9 +21,9 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
     login_manager.login_view = 'web.login'
     
-    # 配置日志
-    from app.utils.logger import setup_logger
-    setup_logger(app)
+    # 配置日志（Vercel 只读文件系统，禁用文件日志）
+    # from app.utils.logger import setup_logger
+    # setup_logger(app)
     
     # 注册蓝图
     from app.routes import auth, data, model, analysis, report, health, web
