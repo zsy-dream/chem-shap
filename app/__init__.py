@@ -42,54 +42,62 @@ def create_app(config_class=Config):
     register_request_hooks(app)
     
     # 注册CLI命令
-    from app.cli import register_commands
-    register_commands(app)
-    
-    # 初化演示数据
-    # init_demo_data(app)
+    # 初始化演示数据
+    init_demo_data(app)
     
     return app
 
 def init_demo_data(app):
     """初始化演示数据"""
     import os
-    import pandas as pd
-    from app.models import Sample, ExperimentRecord, MLModel, OptimizationReport
+    import csv
+    from app.models import Sample, ExperimentRecord, MLModel, OptimizationReport, User
     
     with app.app_context():
+        # 首先创建表(Vercel 内存数据库需要)
+        db.create_all()
+
+        # 添加演示用户
+        if User.query.filter_by(username='admin').first() is None:
+            user = User(username='admin')
+            user.set_password('123456')
+            db.session.add(user)
+            db.session.commit()
+
         # 检查是否已有数据
         if Sample.query.first() is None:
             demo_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'sample_data_large.csv')
             if os.path.exists(demo_file):
                 try:
-                    df = pd.read_csv(demo_file)
-                    for idx, row in df.iterrows():
-                        sample = Sample(
-                            sample_id=f"DEMO_{idx+1:03d}",
-                            experiment_round=1,
-                            experiment_group='A'
-                        )
-                        db.session.add(sample)
-                        db.session.flush()
-                        
-                        record = ExperimentRecord(
-                            sample_id=sample.id,
-                            feature_data={
-                                'reaction_temperature': float(row['reaction_temperature']),
-                                'reaction_time_min': float(row['reaction_time_min']),
-                                'ph_value': float(row['ph_value']),
-                                'catalyst_loading': float(row['catalyst_loading']),
-                                'solvent_polarity': float(row['solvent_polarity']),
-                                'stirring_speed_rpm': float(row['stirring_speed_rpm']),
-                                'reactant_ratio': float(row['reactant_ratio']),
-                                'crystallization_time_min': float(row['crystallization_time_min']),
-                                'target': int(row['target'])
-                            }
-                        )
-                        db.session.add(record)
+                    with open(demo_file, 'r', encoding='utf-8') as f:
+                        reader = csv.DictReader(f)
+                        for idx, row in enumerate(reader):
+                            sample = Sample(
+                                sample_id=f"DEMO_{idx+1:03d}",
+                                experiment_round=1,
+                                experiment_group='A'
+                            )
+                            db.session.add(sample)
+                            db.session.flush()
+                            
+                            record = ExperimentRecord(
+                                sample_id=sample.id,
+                                feature_data={
+                                    'reaction_temperature': float(row['reaction_temperature']),
+                                    'reaction_time_min': float(row['reaction_time_min']),
+                                    'ph_value': float(row['ph_value']),
+                                    'catalyst_loading': float(row['catalyst_loading']),
+                                    'solvent_polarity': float(row['solvent_polarity']),
+                                    'stirring_speed_rpm': float(row['stirring_speed_rpm']),
+                                    'reactant_ratio': float(row['reactant_ratio']),
+                                    'crystallization_time_min': float(row['crystallization_time_min']),
+                                    'target': int(row['target'])
+                                }
+                            )
+                            db.session.add(record)
                     
                     db.session.commit()
-                    app.logger.info(f"演示数据加载完成: {len(df)} 条样本")
+                    app.logger.info("演示数据加载完成")
                 except Exception as e:
                     app.logger.error(f"演示数据加载失败: {e}")
                     db.session.rollback()

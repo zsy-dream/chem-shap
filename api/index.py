@@ -7,12 +7,22 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # 设置环境变量
 os.environ.setdefault('FLASK_ENV', 'production')
 
-from unittest.mock import MagicMock
+class DummyVal:
+    def __getattr__(self, name):
+        return DummyVal()
+    def __call__(self, *args, **kwargs):
+        return DummyVal()
+    def tolist(self):
+        return []
+    def fillna(self, *args, **kwargs):
+        return self
+    def round(self, *args, **kwargs):
+        return self
 
-class MockMLModule(MagicMock):
+class MockMLModule:
     @classmethod
     def __getattr__(cls, name):
-        return MagicMock()
+        return DummyVal()
 
 # 针对Vercel演示环境的依赖阉割（防止体积超250MB导致崩溃）
 heavy_modules = [
@@ -22,6 +32,9 @@ heavy_modules = [
 ]
 for mod in heavy_modules:
     sys.modules[mod] = MockMLModule()
+
+# 强制Vercel环境将数据库放在读写目录 /tmp
+os.environ['DATABASE_URL'] = 'sqlite:////tmp/shap_medical_demo.db'
 
 from app import create_app
 
