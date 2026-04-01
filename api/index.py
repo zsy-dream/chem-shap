@@ -37,12 +37,15 @@ for mod in heavy_modules:
 os.environ['DATABASE_URL'] = 'sqlite:////tmp/shap_medical_demo.db'
 
 import traceback
+from flask import Flask
+
+# 提供一个顶级的 app 变量给 Vercel 的语法分析器（AST Parser）扫描
+app = Flask(__name__)
 
 try:
     from app import create_app
     app = create_app()
 except Exception as e:
-    from flask import Flask
     app = Flask(__name__)
     err = traceback.format_exc()
     @app.route('/', defaults={'path': ''})
