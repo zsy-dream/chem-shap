@@ -43,11 +43,11 @@ def create_app(config_class=Config):
     
     # 注册CLI命令
     # 初始化演示数据
-    init_demo_data(app)
+    init_demo_data(app, load_demo_csv=not bool(os.environ.get('VERCEL')))
     
     return app
 
-def init_demo_data(app):
+def init_demo_data(app, load_demo_csv=True):
     """初始化演示数据"""
     import os
     import csv
@@ -65,7 +65,7 @@ def init_demo_data(app):
             db.session.commit()
 
         # 检查是否已有数据
-        if Sample.query.first() is None:
+        if load_demo_csv and Sample.query.first() is None:
             demo_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'sample_data_large.csv')
             if os.path.exists(demo_file):
                 try:
