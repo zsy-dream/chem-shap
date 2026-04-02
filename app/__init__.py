@@ -101,6 +101,45 @@ def init_demo_data(app, load_demo_csv=True):
                             )
                             db.session.add(record)
                     
+                    # 创建演示模型
+                    if MLModel.query.first() is None:
+                        demo_model = MLModel(
+                            name='XGBoost演示模型',
+                            version='1.0',
+                            model_type='xgboost',
+                            file_path='models/demo_model.pkl',
+                            metrics={'accuracy': 0.87, 'auc': 0.92, 'f1': 0.85},
+                            is_active=True
+                        )
+                        db.session.add(demo_model)
+                    
+                    db.session.commit()
+                    
+                    # 为每个样本生成演示报告
+                    import random
+                    random.seed(42)
+                    samples = Sample.query.all()
+                    model = MLModel.query.first()
+                    for sample in samples:
+                        # 根据分组生成不同的成功率
+                        base_prob = 0.65 if sample.experiment_group == 'A' else 0.75
+                        prob = base_prob + random.uniform(-0.15, 0.20)
+                        prob = max(0.3, min(0.95, prob))
+                        
+                        report = OptimizationReport(
+                            sample_id=sample.id,
+                            model_id=model.id if model else 1,
+                            success_probability=prob,
+                            shap_values={'values': [0.0] * 8},
+                            top_features=[
+                                {'feature': 'reaction_temperature', 'display_name': '反应温度', 'value': 85.0, 'contribution': random.uniform(0.05, 0.15), 'impact': 'positive'},
+                                {'feature': 'ph_value', 'display_name': 'pH值', 'value': 7.2, 'contribution': random.uniform(0.03, 0.10), 'impact': 'positive'},
+                                {'feature': 'catalyst_loading', 'display_name': '催化剂添加量', 'value': 2.5, 'contribution': random.uniform(-0.08, 0.05), 'impact': 'negative' if random.random() > 0.5 else 'positive'},
+                            ],
+                            expert_advice='建议围绕反应温度和pH值进行梯度优化，当前条件已接近最优区间。'
+                        )
+                        db.session.add(report)
+                    
                     db.session.commit()
                     app.logger.info("演示数据加载完成")
                 except Exception as e:

@@ -1,6 +1,8 @@
 ﻿from collections import Counter
 from functools import wraps
 import os
+import random
+import statistics
 
 import joblib
 import numpy as np
@@ -35,6 +37,41 @@ def _safe_float(value, default=0.0):
 
 
 def _bootstrap_ci_diff(control_values, opt_values, n_boot=1200, ci=0.95, seed=42):
+    # Vercel demo 环境下 numpy 可能被 mock（DummyVal），用纯 Python 兜底
+    if os.environ.get('VERCEL'):
+        control = [float(x) for x in control_values if x is not None]
+        opt = [float(x) for x in opt_values if x is not None]
+        if len(control) == 0 or len(opt) == 0:
+            return {
+                'diff': 0.0,
+                'ci_low': 0.0,
+                'ci_high': 0.0,
+                'n_control': int(len(control)),
+                'n_opt': int(len(opt))
+            }
+
+        rng = random.Random(seed)
+        diffs = []
+        for _ in range(int(n_boot)):
+            c = [rng.choice(control) for _ in range(len(control))]
+            o = [rng.choice(opt) for _ in range(len(opt))]
+            diffs.append(statistics.fmean(o) - statistics.fmean(c))
+
+        diffs_sorted = sorted(diffs)
+        alpha = (1 - ci) / 2
+        low_idx = max(0, min(len(diffs_sorted) - 1, int(alpha * (len(diffs_sorted) - 1))))
+        high_idx = max(0, min(len(diffs_sorted) - 1, int((1 - alpha) * (len(diffs_sorted) - 1))))
+        low = float(diffs_sorted[low_idx])
+        high = float(diffs_sorted[high_idx])
+        diff = float(statistics.fmean(opt) - statistics.fmean(control))
+        return {
+            'diff': round(diff, 2),
+            'ci_low': round(low, 2),
+            'ci_high': round(high, 2),
+            'n_control': int(len(control)),
+            'n_opt': int(len(opt))
+        }
+
     control = np.asarray(control_values, dtype=float)
     opt = np.asarray(opt_values, dtype=float)
     if control.size == 0 or opt.size == 0:
@@ -67,6 +104,28 @@ def _bootstrap_ci_diff(control_values, opt_values, n_boot=1200, ci=0.95, seed=42
 
 
 def _permutation_pvalue_diff(control_values, opt_values, n_perm=3000, seed=42):
+    # Vercel demo 环境下 numpy 可能被 mock（DummyVal），用纯 Python 兜底
+    if os.environ.get('VERCEL'):
+        control = [float(x) for x in control_values if x is not None]
+        opt = [float(x) for x in opt_values if x is not None]
+        if len(control) == 0 or len(opt) == 0:
+            return 1.0
+
+        rng = random.Random(seed)
+        observed = float(statistics.fmean(opt) - statistics.fmean(control))
+        combined = control + opt
+        n_c = len(control)
+        count = 0
+        for _ in range(int(n_perm)):
+            perm = combined[:]
+            rng.shuffle(perm)
+            c = perm[:n_c]
+            o = perm[n_c:]
+            diff = float(statistics.fmean(o) - statistics.fmean(c))
+            if abs(diff) >= abs(observed):
+                count += 1
+        return float((count + 1) / (int(n_perm) + 1))
+
     control = np.asarray(control_values, dtype=float)
     opt = np.asarray(opt_values, dtype=float)
     if control.size == 0 or opt.size == 0:
