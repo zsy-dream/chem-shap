@@ -1,5 +1,6 @@
 import os
 import sys
+import types
 
 # 添加项目根目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,19 +20,37 @@ class DummyVal:
     def round(self, *args, **kwargs):
         return self
 
-class MockMLModule:
-    @classmethod
-    def __getattr__(cls, name):
+def _ensure_mock_module(module_name: str, is_package: bool = False):
+    """Create a lightweight mock module/package in sys.modules.
+
+    This is used for Vercel demo deployments to avoid installing heavy ML deps.
+    The previous DummyVal-based mock broke importlib's package handling.
+    """
+    if module_name in sys.modules:
+        return sys.modules[module_name]
+
+    if '.' in module_name:
+        parent_name, _ = module_name.rsplit('.', 1)
+        _ensure_mock_module(parent_name, is_package=True)
+
+    m = types.ModuleType(module_name)
+    if is_package:
+        m.__path__ = []
+    def __getattr__(name):
         return DummyVal()
+    m.__getattr__ = __getattr__
+    sys.modules[module_name] = m
+    return m
 
 # 针对Vercel演示环境的依赖阉割（防止体积超250MB导致崩溃）
 heavy_modules = [
     'numpy', 'pandas', 'xgboost', 'lightgbm', 'shap', 'sklearn', 
+    'sklearn.impute', 'sklearn.preprocessing', 'sklearn.ensemble',
     'sklearn.model_selection', 'sklearn.metrics', 'matplotlib', 
     'matplotlib.pyplot', 'seaborn', 'reportlab', 'scipy', 'joblib'
 ]
 for mod in heavy_modules:
-    sys.modules[mod] = MockMLModule()
+    _ensure_mock_module(mod, is_package=True)
 
 # 强制Vercel环境将数据库放在读写目录 /tmp
 os.environ['DATABASE_URL'] = 'sqlite:////tmp/shap_medical_demo.db'
