@@ -45,7 +45,7 @@ def create_app(config_class=Config):
     
     # 注册CLI命令
     # 初始化演示数据
-    init_demo_data(app, load_demo_csv=not bool(os.environ.get('VERCEL')))
+    init_demo_data(app)
     
     return app
 
@@ -67,6 +67,7 @@ def init_demo_data(app, load_demo_csv=True):
             db.session.commit()
 
         # 检查是否已有数据
+        max_samples = 10 if os.environ.get('VERCEL') else None
         if load_demo_csv and Sample.query.first() is None:
             demo_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'sample_data_large.csv')
             if os.path.exists(demo_file):
@@ -74,6 +75,8 @@ def init_demo_data(app, load_demo_csv=True):
                     with open(demo_file, 'r', encoding='utf-8') as f:
                         reader = csv.DictReader(f)
                         for idx, row in enumerate(reader):
+                            if max_samples and idx >= max_samples:
+                                break
                             sample = Sample(
                                 sample_id=f"DEMO_{idx+1:03d}",
                                 experiment_round=1,
