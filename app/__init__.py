@@ -61,7 +61,7 @@ def init_demo_data(app, load_demo_csv=True):
 
         # 添加演示用户
         if User.query.filter_by(username='admin').first() is None:
-            user = User(username='admin')
+            user = User(username='admin', role='admin')
             user.set_password('123456')
             db.session.add(user)
             db.session.commit()
