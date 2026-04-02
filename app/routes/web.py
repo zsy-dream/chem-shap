@@ -338,33 +338,35 @@ def build_dashboard_data(records, reports):
         'labels': [],
         'matrix': []
     }
-    try:
-        feature_keys = [
-            'reaction_temperature',
-            'reaction_time_min',
-            'ph_value',
-            'catalyst_loading',
-            'solvent_polarity',
-            'stirring_speed_rpm',
-            'reactant_ratio',
-            'crystallization_time_min'
-        ]
-        rows = []
-        for record in records[:240]:
-            data = record.feature_data or {}
-            if isinstance(data, dict):
-                rows.append({key: data.get(key) for key in feature_keys})
-        if rows:
-            df = pd.DataFrame(rows)
-            df = df.apply(pd.to_numeric, errors='coerce')
-            corr_df = df.corr().fillna(0).round(2)
-            correlation['labels'] = [get_feature_label(key) for key in feature_keys]
-            correlation['matrix'] = corr_df.values.tolist()
-    except Exception:
-        correlation = {
-            'labels': [],
-            'matrix': []
-        }
+    # Vercel 环境下 pandas 被 mock，跳过相关性计算
+    if not os.environ.get('VERCEL'):
+        try:
+            feature_keys = [
+                'reaction_temperature',
+                'reaction_time_min',
+                'ph_value',
+                'catalyst_loading',
+                'solvent_polarity',
+                'stirring_speed_rpm',
+                'reactant_ratio',
+                'crystallization_time_min'
+            ]
+            rows = []
+            for record in records[:240]:
+                data = record.feature_data or {}
+                if isinstance(data, dict):
+                    rows.append({key: data.get(key) for key in feature_keys})
+            if rows:
+                df = pd.DataFrame(rows)
+                df = df.apply(pd.to_numeric, errors='coerce')
+                corr_df = df.corr().fillna(0).round(2)
+                correlation['labels'] = [get_feature_label(key) for key in feature_keys]
+                correlation['matrix'] = corr_df.values.tolist()
+        except Exception:
+            correlation = {
+                'labels': [],
+                'matrix': []
+            }
 
     return {
         'experiment_labels': experiment_labels,
