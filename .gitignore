@@ -38,6 +38,10 @@ uploads/*
 logs/*
 !logs/.gitkeep
 
+# Build and Distribution
+build/
+dist/
+
 # OS
 .DS_Store
 Thumbs.db
