@@ -1019,6 +1019,67 @@ def perform_analysis():
             return jsonify({'error': '该样本没有实验记录，请先上传实验数据'}), 400
 
         model_path = ml_model.file_path
+        # Vercel demo mode: if model file missing, use demo prediction instead of error
+        if os.environ.get('VERCEL') and not os.path.exists(model_path):
+            import random
+            random.seed(sample_id + model_id)
+            # Use record's target feature to generate consistent demo probability
+            feature_data = record.feature_data or {}
+            target_val = feature_data.get('target', 0)
+            base_prob = 0.75 if target_val == 1 else 0.55
+            success_probability = base_prob + random.uniform(-0.15, 0.15)
+            success_probability = max(0.3, min(0.95, success_probability))
+            
+            # Generate demo SHAP-like contributions based on feature values
+            local_explanation = []
+            top_features = []
+            for idx, (feature, value) in enumerate(feature_data.items()):
+                if feature == 'target':
+                    continue
+                contribution = random.uniform(-0.08, 0.12)
+                if idx == 0:
+                    contribution = abs(contribution) + 0.05  # Make first feature most important
+                local_explanation.append((feature, contribution))
+                top_features.append({
+                    'feature': feature,
+                    'display_name': get_feature_label(feature),
+                    'value': float(value) if isinstance(value, (int, float)) else 0,
+                    'formatted_value': format_feature_value(feature, value),
+                    'contribution': float(contribution),
+                    'impact': 'positive' if contribution > 0 else 'negative'
+                })
+            
+            result_level = get_result_level(success_probability)
+            
+            report = OptimizationReport(
+                sample_id=sample.id,
+                model_id=ml_model.id,
+                success_probability=success_probability,
+                shap_values={'values': [0.0] * len(top_features), 'features': [f['feature'] for f in top_features]},
+                top_features=top_features[:top_n],
+                expert_advice='【演示模式】建议优化反应温度和pH值以获得更好的实验结果。当前配置已接近最优区间。'
+            )
+            db.session.add(report)
+            db.session.commit()
+            
+            optimization_tips = [
+                '优化反应温度控制在75-90℃区间',
+                '调整pH值至弱酸性范围（6.5-7.0）',
+                '适当增加催化剂用量以提升反应效率'
+            ]
+            
+            return jsonify({
+                'success': True,
+                'report_id': report.id,
+                'success_probability': success_probability,
+                'result_level': result_level['key'],
+                'result_label': result_level['label'],
+                'result_description': result_level['description'],
+                'top_features': top_features[:top_n],
+                'optimization_tips': optimization_tips,
+                'message': '【演示模式】分析完成！'
+            }), 200
+        
         if not os.path.exists(model_path):
             return jsonify({'error': f'模型文件不存在: {model_path}'}), 400
 

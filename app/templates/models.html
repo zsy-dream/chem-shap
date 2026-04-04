@@ -300,26 +300,53 @@
                 alert('获取模型详情失败：' + error);
             });
     }
-    // 确保弹窗能关闭：显式绑定关闭事件
+
+    // 关闭弹窗辅助函数：强制清理 loading、遮罩层、body 样式
+    function forceCloseModal(modalId) {
+        hideLoading();
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            modal.setAttribute('aria-hidden', 'true');
+            // 使用 Bootstrap 原生实例关闭
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        }
+        // 清理所有遮罩层
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+    }
+
+    // 确保所有弹窗能正常关闭
+    function closeTrainModal() { forceCloseModal('trainModelModal'); }
+    function closeDetailsModal() { forceCloseModal('modelDetailsModal'); }
+
+    // 点击遮罩层关闭
     document.querySelectorAll('.modal').forEach(modalEl => {
-        // 点击遮罩层关闭
         modalEl.addEventListener('click', (e) => {
             if (e.target === modalEl) {
-                bootstrap.Modal.getInstance(modalEl)?.hide();
+                const modalId = modalEl.id;
+                forceCloseModal(modalId);
             }
         });
-        
-        // 点 X 按钮关闭
-        modalEl.querySelector('.btn-close')?.addEventListener('click', () => {
-            bootstrap.Modal.getInstance(modalEl)?.hide();
+    });
+
+    // 点 X 按钮和取消按钮关闭
+    document.querySelectorAll('.modal .btn-close, .modal .btn-secondary').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const modal = btn.closest('.modal');
+            if (modal) forceCloseModal(modal.id);
         });
     });
-    
+
     // ESC 键关闭任何打开的弹窗
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal.show').forEach(modalEl => {
-                bootstrap.Modal.getInstance(modalEl)?.hide();
+            document.querySelectorAll('.modal.show, .modal[style*="display: block"]').forEach(modalEl => {
+                forceCloseModal(modalEl.id);
             });
         }
     });
