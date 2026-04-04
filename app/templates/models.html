@@ -109,7 +109,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-brain"></i> 训练新预测模型</h5>
-                <button type="button" class="btn-close" onclick="document.getElementById('trainModelModal').classList.remove('show'); document.querySelector('.modal-backdrop')?.remove(); document.body.classList.remove('modal-open'); document.body.style.overflow='';"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="trainModelForm" enctype="multipart/form-data">
@@ -149,7 +149,7 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="document.getElementById('trainModelModal').classList.remove('show'); document.querySelector('.modal-backdrop')?.remove(); document.body.classList.remove('modal-open'); document.body.style.overflow='';">取消</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-success" onclick="trainModel()"><i class="fas fa-play"></i>
                     开始训练</button>
             </div>
@@ -162,7 +162,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-info-circle"></i> 模型详细指标</h5>
-                <button type="button" class="btn-close" onclick="document.getElementById('modelDetailsModal').classList.remove('show'); document.querySelector('.modal-backdrop')?.remove(); document.body.classList.remove('modal-open'); document.body.style.overflow='';"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="modelDetailsContent">
                 <!-- 动态加载内容 -->
@@ -293,7 +293,7 @@
             `;
                 }
                 document.getElementById('modelDetailsContent').innerHTML = html;
-                new bootstrap.Modal(document.getElementById('modelDetailsModal')).show();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('modelDetailsModal')).show();
             })
             .catch(error => {
                 hideLoading();
@@ -301,51 +301,31 @@
             });
     }
 
-    // 关闭弹窗辅助函数：强制清理 loading、遮罩层、body 样式
+    // 强制关闭弹窗：先走 Bootstrap API，再手动兜底清理
     function forceCloseModal(modalId) {
         hideLoading();
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            modal.setAttribute('aria-hidden', 'true');
-            // 使用 Bootstrap 原生实例关闭
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) bsModal.hide();
+        const modalEl = document.getElementById(modalId);
+        if (modalEl) {
+            const bsModal = bootstrap.Modal.getInstance(modalEl);
+            if (bsModal) {
+                bsModal.hide();
+                return; // Bootstrap 会自行清理
+            }
+            // 兜底：手动清理
+            modalEl.classList.remove('show');
+            modalEl.style.display = 'none';
+            modalEl.setAttribute('aria-hidden', 'true');
         }
-        // 清理所有遮罩层
         document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
         document.body.style.paddingRight = '';
     }
 
-    // 确保所有弹窗能正常关闭
-    function closeTrainModal() { forceCloseModal('trainModelModal'); }
-    function closeDetailsModal() { forceCloseModal('modelDetailsModal'); }
-
-    // 点击遮罩层关闭
-    document.querySelectorAll('.modal').forEach(modalEl => {
-        modalEl.addEventListener('click', (e) => {
-            if (e.target === modalEl) {
-                const modalId = modalEl.id;
-                forceCloseModal(modalId);
-            }
-        });
-    });
-
-    // 点 X 按钮和取消按钮关闭
-    document.querySelectorAll('.modal .btn-close, .modal .btn-secondary').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const modal = btn.closest('.modal');
-            if (modal) forceCloseModal(modal.id);
-        });
-    });
-
-    // ESC 键关闭任何打开的弹窗
+    // ESC 键兜底关闭
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            document.querySelectorAll('.modal.show, .modal[style*="display: block"]').forEach(modalEl => {
+            document.querySelectorAll('.modal.show').forEach(modalEl => {
                 forceCloseModal(modalEl.id);
             });
         }
