@@ -66,6 +66,15 @@ def init_demo_data(app, load_demo_csv=True):
             db.session.add(user)
             db.session.commit()
 
+        existing_models = MLModel.query.all()
+        models_updated = False
+        for model in existing_models:
+            if model.name and '演示' in model.name:
+                model.name = model.name.replace('演示', '')
+                models_updated = True
+        if models_updated:
+            db.session.commit()
+
         # 检查是否已有数据
         max_samples = 10 if os.environ.get('VERCEL') else None
         if load_demo_csv and Sample.query.first() is None:
@@ -104,7 +113,7 @@ def init_demo_data(app, load_demo_csv=True):
                     # 创建演示模型
                     if MLModel.query.first() is None:
                         demo_model = MLModel(
-                            name='XGBoost演示模型',
+                            name='XGBoost预测模型',
                             version='1.0',
                             model_type='xgboost',
                             file_path='models/demo_model.pkl',

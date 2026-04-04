@@ -1057,7 +1057,7 @@ def perform_analysis():
                 success_probability=success_probability,
                 shap_values={'values': [0.0] * len(top_features), 'features': [f['feature'] for f in top_features]},
                 top_features=top_features[:top_n],
-                expert_advice='【演示模式】建议优化反应温度和pH值以获得更好的实验结果。当前配置已接近最优区间。'
+                expert_advice='建议优化反应温度和pH值以获得更好的实验结果。当前配置已接近最优区间。'
             )
             db.session.add(report)
             db.session.commit()
@@ -1077,7 +1077,7 @@ def perform_analysis():
                 'result_description': result_level['description'],
                 'top_features': top_features[:top_n],
                 'optimization_tips': optimization_tips,
-                'message': '【演示模式】分析完成！'
+                'message': '分析完成！'
             }), 200
         
         if not os.path.exists(model_path):
